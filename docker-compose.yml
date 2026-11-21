@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16
+    env_file: .env
+    ports: ["55433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ffcl -d ffcl"]
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7
+    ports: ["56379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+  api:
+    build: ./api
+    env_file: .env
+    ports: ["8000:8000"]
+    volumes: ["./api:/app", "/app/.venv"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  web:
+    build: ./web
+    env_file: .env
+    ports: ["3100:3000"]
+    volumes: ["./web:/app", "/app/node_modules", "/app/.next"]
+    depends_on: [api]
+volumes:
+  pgdata:

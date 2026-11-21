@@ -1,0 +1,237 @@
+"""Phase 1 schema. Scorecards are derived from ball_events + penalties."""
+
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+def _pk() -> Mapped[int]:
+    return mapped_column(Integer, primary_key=True, autoincrement=True)
+
+
+def _now() -> Mapped[datetime]:
+    return mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = _pk()
+    player_code: Mapped[str] = mapped_column(String(16), unique=True)
+    name: Mapped[str] = mapped_column(String(120))
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    phone: Mapped[str | None] = mapped_column(String(20), unique=True)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    avatar_url: Mapped[str | None] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active|suspended|banned
+    created_at: Mapped[datetime] = _now()
+
+
+class UserRole(Base):
+    __tablename__ = "user_roles"
+    __table_args__ = (UniqueConstraint("user_id", "role", "season_id"),)
+    id: Mapped[int] = _pk()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    role: Mapped[str] = mapped_column(String(24))  # super_admin|tournament_admin|umpire|captain|player
+    season_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"))
+
+
+class OtpCode(Base):
+    __tablename__ = "otp_codes"
+    id: Mapped[int] = _pk()
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    code_hash: Mapped[str] = mapped_column(String(255))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Session(Base):
+    __tablename__ = "sessions"
+    id: Mapped[int] = _pk()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    refresh_hash: Mapped[str] = mapped_column(String(255), unique=True)
+    user_agent: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = _now()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RuleSet(Base):
+    __tablename__ = "rule_sets"
+    __table_args__ = (UniqueConstraint("name", "version"),)
+    id: Mapped[int] = _pk()
+    name: Mapped[str] = mapped_column(String(80))
+    version: Mapped[int] = mapped_column(Integer)
+    config: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = _now()
+
+
+class Season(Base):
+    __tablename__ = "seasons"
+    id: Mapped[int] = _pk()
+    name: Mapped[str] = mapped_column(String(80), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="draft")  # draft|active|completed|archived
+    starts_on: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ends_on: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rule_set_id: Mapped[int | None] = mapped_column(ForeignKey("rule_sets.id"))
+
+
+class Team(Base):
+    __tablename__ = "teams"
+    __table_args__ = (UniqueConstraint("season_id", "name"),)
+    id: Mapped[int] = _pk()
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"))
+    name: Mapped[str] = mapped_column(String(80))
+    logo_url: Mapped[str | None] = mapped_column(String(500))
+    color: Mapped[str | None] = mapped_column(String(16))
+    captain_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    vice_captain_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+    __table_args__ = (UniqueConstraint("team_id", "user_id"),)
+    id: Mapped[int] = _pk()
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[str] = mapped_column(String(16), default="pending")  # pending|approved|removed
+
+
+class Match(Base):
+    __tablename__ = "matches"
+    __table_args__ = (UniqueConstraint("season_id", "match_no"),)
+    id: Mapped[int] = _pk()
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"))
+    match_no: Mapped[int] = mapped_column(Integer)
+    team_a_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    team_b_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    umpire_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    rule_set_id: Mapped[int] = mapped_column(ForeignKey("rule_sets.id"))
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), default="scheduled")
+    paused: Mapped[bool] = mapped_column(Boolean, default=False)
+    winner_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
+    result_text: Mapped[str | None] = mapped_column(String(200))
+    seq: Mapped[int] = mapped_column(Integer, default=0)  # bumped on every state change
+
+
+class MatchPlayer(Base):
+    __tablename__ = "match_players"
+    __table_args__ = (UniqueConstraint("match_id", "user_id"),)
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"))
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    batting_order: Mapped[int | None] = mapped_column(Integer)
+
+
+class Toss(Base):
+    __tablename__ = "tosses"
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), unique=True)
+    winner_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
+    decision: Mapped[str | None] = mapped_column(String(8))  # bat|bowl
+    confirmed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Innings(Base):
+    __tablename__ = "innings"
+    __table_args__ = (UniqueConstraint("match_id", "number"),)
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"))
+    number: Mapped[int] = mapped_column(Integer)  # 1 or 2
+    batting_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    bowling_team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    target: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+
+
+class Over(Base):
+    __tablename__ = "overs"
+    __table_args__ = (UniqueConstraint("innings_id", "number"),)
+    id: Mapped[int] = _pk()
+    innings_id: Mapped[int] = mapped_column(ForeignKey("innings.id"))
+    number: Mapped[int] = mapped_column(Integer)
+    over_type: Mapped[str] = mapped_column(String(16))  # normal|bowling_pp|batting_pp
+    bowler_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    batter_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    state: Mapped[str] = mapped_column(String(20), default="awaiting_signal")
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DigitSubmission(Base):
+    __tablename__ = "digit_submissions"
+    __table_args__ = (UniqueConstraint("over_id", "role"),)
+    id: Mapped[int] = _pk()
+    over_id: Mapped[int] = mapped_column(ForeignKey("overs.id"))
+    role: Mapped[str] = mapped_column(String(8))  # bat|bowl
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    digits: Mapped[str] = mapped_column(String(6))
+    submitted_at: Mapped[datetime] = _now()
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    overridden_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+
+class BallEvent(Base):
+    """Append-only. Corrections insert a higher revision; latest revision wins."""
+
+    __tablename__ = "ball_events"
+    __table_args__ = (UniqueConstraint("innings_id", "over_no", "ball_no", "revision"),)
+    id: Mapped[int] = _pk()
+    innings_id: Mapped[int] = mapped_column(ForeignKey("innings.id"))
+    over_no: Mapped[int] = mapped_column(Integer)
+    ball_no: Mapped[int] = mapped_column(Integer)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    batter_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    bowler_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    batter_digit: Mapped[int] = mapped_column(Integer)
+    bowler_digit: Mapped[int] = mapped_column(Integer)
+    runs: Mapped[int] = mapped_column(Integer)
+    is_wicket: Mapped[bool] = mapped_column(Boolean)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _now()
+
+
+class Penalty(Base):
+    __tablename__ = "penalties"
+    __table_args__ = (UniqueConstraint("match_id", "idempotency_key"),)
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"))
+    innings_id: Mapped[int | None] = mapped_column(ForeignKey("innings.id"))
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    kind: Mapped[str] = mapped_column(String(40))
+    runs: Mapped[int] = mapped_column(Integer, default=0)
+    wickets: Mapped[int] = mapped_column(Integer, default=0)
+    reason: Mapped[str] = mapped_column(Text)
+    idempotency_key: Mapped[str] = mapped_column(String(64))
+    applied_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _now()
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id: Mapped[int] = _pk()
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    action: Mapped[str] = mapped_column(String(60))
+    entity: Mapped[str] = mapped_column(String(40))
+    entity_id: Mapped[int | None] = mapped_column(Integer)
+    reason: Mapped[str | None] = mapped_column(Text)
+    before: Mapped[dict | None] = mapped_column(JSON)
+    after: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = _now()
