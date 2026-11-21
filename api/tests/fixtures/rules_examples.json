@@ -1,0 +1,46 @@
+{
+  "bowling_normal": [
+    {"id": "A1", "over": 1, "digits": [1,2,3,4,5,6], "valid": true},
+    {"id": "A2", "over": 1, "digits": [1,1,1,2,2,3], "valid": true},
+    {"id": "A3", "over": 1, "digits": [1,1,1,2,2,2], "valid": false, "code": "repeat_limit"},
+    {"id": "A4", "over": 1, "digits": [1,1,1,1,2,3], "valid": false, "code": "repeat_limit"},
+    {"id": "A5", "over": 1, "digits": [1,1,2,2,3,3], "valid": true},
+    {"id": "A6", "over": 1, "digits": [1,2,3,4,5], "valid": false, "code": "invalid_count"},
+    {"id": "A7", "over": 1, "digits": [1,2,3,4,5,0], "valid": false, "code": "invalid_digit"},
+    {"id": "A8", "over": 1, "digits": [1,2,3,4,5,7], "valid": false, "code": "invalid_digit"},
+    {"id": "A9", "over": 2, "digits": [1,1,1,2,2,2], "valid": false, "code": "repeat_limit"}
+  ],
+  "batting_pp_over2": [
+    {"id": "B1", "over": 2, "digits": [5,6,1,2,3,4], "valid": true},
+    {"id": "B2", "over": 2, "digits": [5,5,6,1,2,3], "valid": false, "code": "pp_requires_5_and_6"},
+    {"id": "B3", "over": 2, "digits": [1,2,3,4,1,2], "valid": false, "code": "pp_requires_5_and_6"},
+    {"id": "B4", "over": 2, "digits": [1,5,2,6,3,4], "valid": true},
+    {"id": "B5", "over": 2, "digits": [5,6,1,1,1,1], "valid": true},
+    {"id": "B6", "over": 2, "digits": [6,6,6,6,6,6], "valid": false, "code": "pp_requires_5_and_6"}
+  ],
+  "bowling_pp_over6": [
+    {"id": "C1", "over": 6, "digits": [6,5,2,2,1,4], "valid": true},
+    {"id": "C2", "over": 6, "digits": [6,6,5,1,2,3], "valid": false, "code": "pp_requires_5_and_6"},
+    {"id": "C3", "over": 6, "digits": [1,1,1,2,2,3], "valid": false, "code": "pp_requires_5_and_6"},
+    {"id": "C4", "over": 6, "digits": [5,6,1,1,1,2], "valid": true},
+    {"id": "C5", "over": 6, "digits": [5,6,1,1,1,1], "valid": false, "code": "repeat_limit"}
+  ],
+  "batting_normal": [
+    {"id": "D1", "over": 1, "digits": [6,6,6,6,6,6], "valid": true},
+    {"id": "D2", "over": 1, "digits": [1,2,3,4,5], "valid": false, "code": "invalid_count"},
+    {"id": "D3", "over": 1, "digits": [1,2,3,4,5,0], "valid": false, "code": "invalid_digit"},
+    {"id": "D4", "over": 6, "digits": [1,1,1,1,1,1], "valid": true}
+  ],
+  "balls": [
+    {"id": "E1", "batter": 2, "bowler": 5, "runs": 2, "wicket": false},
+    {"id": "E2", "batter": 4, "bowler": 1, "runs": 4, "wicket": false},
+    {"id": "E3", "batter": 6, "bowler": 3, "runs": 6, "wicket": false},
+    {"id": "E4", "batter": 3, "bowler": 3, "runs": 0, "wicket": true},
+    {"id": "E5", "batter": 5, "bowler": 5, "runs": 0, "wicket": true},
+    {"id": "E6", "batter": 1, "bowler": 6, "runs": 1, "wicket": false}
+  ],
+  "overs": [
+    {"id": "F1", "batting": [1,2,3,4,5,6], "bowling": [6,5,4,3,2,1], "runs": 21, "wickets": 0},
+    {"id": "F1b", "batting": [1,2,3,4,5,6], "bowling": [1,2,3,4,5,6], "runs": 0, "wickets": 6}
+  ]
+}

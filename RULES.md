@@ -13,15 +13,15 @@ Source of truth for the engine. Every example below becomes a unit test. All val
 | Digits | 1 to 6 only (0 invalid) |
 
 ## Over types
-| Over | Type | Bowling digits | Batting digits |
+| Over | Type | Batting digits | Bowling digits |
 |---|---|---|---|
-| 1, 3, 4, 5, 7 | Normal | One digit may appear 3 times, every other digit at most 2 | Any digits 1-6 |
-| 2 | Bowling powerplay | 5 and 6 each exactly once | Any digits 1-6 |
-| 6 | Batting powerplay | Any digits 1-6 | 5 and 6 each exactly once |
+| 1, 3, 4, 5, 7 | Normal | Any digits 1-6 | One digit may appear 3 times, every other digit at most 2 |
+| 2 | Bowling powerplay (batter restricted) | 5 and 6 each exactly once, other four free | Normal limit |
+| 6 | Batting powerplay (bowler restricted) | Any digits 1-6 | 5 and 6 each exactly once, other four follow the normal limit |
 
-Each side submits six digits per over. In a powerplay, the 5 and 6 may be in any positions, the other four digits are free.
+Each side submits six digits per over. In a powerplay the 5 and 6 may be in any positions, so the other four digits can only be 1-4.
 
-> PP detail to confirm: whether the four free digits in a powerplay over follow the normal repeat limit.
+> Assumptions to confirm: the free four digits of a restricted batter are unlimited (1-4); the free four of a restricted bowler follow the normal repeat limit.
 
 ## Ball resolution
 - Batter digit equals bowler digit: **wicket**. The bowler gets credit. Runs 0.
@@ -49,26 +49,33 @@ Each side submits six digits per over. In a powerplay, the 5 and 6 may be in any
 | A7 | 1,2,3,4,5,0 | no | digit 0 |
 | A8 | 1,2,3,4,5,7 | no | digit 7 |
 
-### B. Bowling powerplay (over 2)
-| # | Digits | Valid | Reason |
+### B. Bowling powerplay (over 2): BATTING digits restricted
+| # | Batting digits | Valid | Reason |
 |---|---|---|---|
 | B1 | 5,6,1,2,3,4 | yes | 5 and 6 once each |
 | B2 | 5,5,6,1,2,3 | no | 5 twice |
 | B3 | 1,2,3,4,1,2 | no | missing 5 and 6 |
 | B4 | 1,5,2,6,3,4 | yes | any order |
+| B5 | 5,6,1,1,1,1 | yes | free digits unlimited for batter |
+| B6 | 6,6,6,6,6,6 | no | 6 six times |
+Bowling digits in over 2 follow the normal limit (A examples).
 
-### C. Batting powerplay (over 6)
-| # | Batting digits | Valid | Reason |
+### C. Batting powerplay (over 6): BOWLING digits restricted
+| # | Bowling digits | Valid | Reason |
 |---|---|---|---|
-| C1 | 6,5,2,2,1,4 | yes | 5 and 6 once each |
+| C1 | 6,5,2,2,1,4 | yes | 5 and 6 once each, 2 twice |
 | C2 | 6,6,5,1,2,3 | no | 6 twice |
-| C3 | 1,1,1,1,1,1 | no | missing 5 and 6 |
+| C3 | 1,1,1,2,2,3 | no | missing 5 and 6 |
+| C4 | 5,6,1,1,1,2 | yes | one digit x3 |
+| C5 | 5,6,1,1,1,1 | no | digit used 4 times |
+Batting digits in over 6 are unrestricted.
 
 ### D. Normal batting (any 1-6, six digits)
 | # | Batting digits | Valid |
 |---|---|---|
 | D1 | 6,6,6,6,6,6 | yes |
 | D2 | 1,2,3,4,5 | no (five digits) |
+| D3 | 1,2,3,4,5,0 | no (digit 0) |
 
 ### E. Ball outcomes
 | # | Batter | Bowler | Result |
@@ -96,4 +103,4 @@ Each side submits six digits per over. In a powerplay, the 5 and 6 may be in any
 | F10 | Duplicate submission for same over and role | rejected (idempotent) |
 | F11 | Umpire correction of a ball | new event revision, scorecard recomputed, audit logged |
 
-Concrete over-by-over rows for F1 are generated in the test fixtures (`api/tests/fixtures/rules_examples.json`) in Sprint 2.
+Machine-readable versions of these examples live in `api/tests/fixtures/rules_examples.json` and are run by `api/tests/test_engine_examples.py`.

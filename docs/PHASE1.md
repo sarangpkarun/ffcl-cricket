@@ -12,7 +12,7 @@
 | Submission flow | Both submit privately; umpire locks and reveals together |
 | Simultaneous matches | Supported (all state keyed by match) |
 | Runs | Batter digit = runs, unless equal to bowler digit (wicket). **Confirm with rulebook in Sprint 0.** |
-| Over types | 1,3,4,5,7 normal; 2 bowling PP (5 and 6 once each); 6 batting PP (bowler plays 5 and 6 once each) |
+| Over types | 1,3,4,5,7 normal; 2 bowling PP (the BATTER must use 5 and 6 once each); 6 batting PP (the BOWLER must use 5 and 6 once each) |
 | Match size | 7 overs, 7 wickets, max 2 overs per bowler, max 7 players per team |
 
 These live in a `rule_sets` table (JSON, versioned). Each match pins a rule-set version.
