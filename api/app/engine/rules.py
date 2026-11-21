@@ -17,6 +17,7 @@ DEFAULT_RULES: dict[str, Any] = {
     "same_digit_is_wicket": True,
     "same_digit_bowler_credit": True,
     "submission_flow": "private_then_reveal",
+    "submission_seconds": 180,
 }
 
 NORMAL, BOWLING_PP, BATTING_PP = "normal", "bowling_pp", "batting_pp"
@@ -35,6 +36,7 @@ class RuleConfig:
     max_repeat_other: int = 2
     same_digit_is_wicket: bool = True
     same_digit_bowler_credit: bool = True
+    submission_seconds: int = 180
 
     @classmethod
     def from_dict(cls, cfg: dict[str, Any] | None = None) -> "RuleConfig":
@@ -53,6 +55,7 @@ class RuleConfig:
             max_repeat_other=normal["max_repeat_other"],
             same_digit_is_wicket=c["same_digit_is_wicket"],
             same_digit_bowler_credit=c["same_digit_bowler_credit"],
+            submission_seconds=c["submission_seconds"],
         )
 
     @property

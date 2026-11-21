@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
@@ -30,7 +31,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AuthProvider>
           <TopBar />
           <main className="flex-1 w-full max-w-md mx-auto px-4 pb-24 pt-4">{children}</main>
-          <BottomNav />
+          <Suspense fallback={null}>
+            <BottomNav />
+          </Suspense>
         </AuthProvider>
       </body>
     </html>

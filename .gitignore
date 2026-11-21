@@ -9,3 +9,6 @@ __pycache__/
 .ruff_cache/
 coverage/
 .DS_Store
+
+test-results/
+playwright-report/

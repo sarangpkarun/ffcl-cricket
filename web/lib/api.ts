@@ -32,6 +32,8 @@ function detail(body: unknown): string {
   const d = (body as { detail?: unknown })?.detail;
   if (typeof d === "string") return d;
   if (Array.isArray(d)) return d.map((e) => (e as { msg: string }).msg).join(", ");
+  const errs = (d as { errors?: { message: string }[] } | undefined)?.errors;
+  if (errs) return errs.map((e) => e.message).join(". ");
   return "Request failed";
 }
 
@@ -123,3 +125,58 @@ export type Match = {
 };
 export type MatchDetail = Match & { lineup: { team_id: number; user_id: number }[] };
 export type UserLite = { id: number; name: string; player_code: string };
+
+export type OverView = {
+  number: number;
+  over_type: "normal" | "bowling_pp" | "batting_pp";
+  state: "awaiting_signal" | "submissions_open" | "locked" | "revealed" | "resolved";
+  deadline_at: string | null;
+  bowler_id: number | null;
+  batter_id: number | null;
+  submitted: { bat: boolean; bowl: boolean };
+  your_role: "bat" | "bowl" | null;
+  mine: number[] | null;
+  digits: { bat: number[] | null; bowl: number[] | null } | null;
+};
+export type BallLine = { ball: number; batter_digit: number; bowler_digit: number; runs: number; wicket: boolean };
+export type InningsCard = {
+  number: number;
+  status: string;
+  target: number | null;
+  batting_team_id: number;
+  bowling_team_id: number;
+  runs: number;
+  wickets: number;
+  overs: string;
+  run_rate: number;
+  required_rate: number | null;
+  balls_remaining: number;
+  wickets_remaining: number;
+  extras: number;
+  finish_reason: string | null;
+  batting: { id: number; name: string | null; runs: number; balls: number; fours: number; sixes: number; out: boolean; strike_rate: number }[];
+  bowling: { id: number; name: string | null; overs: string; runs: number; wickets: number; economy: number }[];
+  timeline: { over: number; balls: BallLine[] }[];
+  penalties: { id: number; team_id: number; kind: string; runs: number; wickets: number; reason: string; voided: boolean }[];
+};
+export type Live = {
+  match: {
+    id: number;
+    match_no: number;
+    status: string;
+    paused: boolean;
+    seq: number;
+    result: string | null;
+    winner_team_id: number | null;
+    umpire_id: number | null;
+    overs: number;
+    wickets: number;
+    teams: Record<string, string>;
+    team_a_id: number;
+    team_b_id: number;
+  };
+  you: { official: boolean };
+  toss: { winner_team_id: number | null; decision: string | null } | null;
+  over: OverView | null;
+  innings: InningsCard[];
+};

@@ -13,3 +13,6 @@ Host ports are offset (Postgres 55433, Redis 56379, web 3100) to avoid clashes w
 ## First admin
     docker compose exec api python -m app.create_admin EMAIL PASSWORD "Name"
 Then sign in at http://localhost:3100/login and open Profile → Admin dashboard.
+
+## End-to-end browser test
+With the stack running (`make up`, `make migrate`): `cd web && pnpm e2e`. It seeds a season through the API, then drives an umpire and two players on phone-sized Chrome windows through one over and checks the digits stay hidden until the reveal.

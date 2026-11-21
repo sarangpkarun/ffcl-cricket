@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db.session import engine
-from app.routers import auth, matches, seasons, teams, users
+from app.routers import auth, live, matches, play, seasons, teams, users
 
 app = FastAPI(title="FFCL API")
 app.add_middleware(
@@ -14,7 +14,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-for r in (auth, users, seasons, teams, matches):
+for r in (auth, users, seasons, teams, matches, play, live):
     app.include_router(r.router)
 
 

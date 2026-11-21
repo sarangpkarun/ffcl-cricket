@@ -219,6 +219,8 @@ class Penalty(Base):
     wickets: Mapped[int] = mapped_column(Integer, default=0)
     reason: Mapped[str] = mapped_column(Text)
     idempotency_key: Mapped[str] = mapped_column(String(64))
+    after_over: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # takes effect after this ball
+    after_ball: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     applied_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _now()
