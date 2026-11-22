@@ -27,6 +27,7 @@ from app.engine import BAT, BOWL, RuleConfig, parse_digits, play_over, validate_
 from app.realtime import publish_change
 from app.routers.teams import can_manage
 from app.services import match_events as events
+from app.services.duties import mark_performed
 from app.services.outbox import flush as flush_outbox
 from app.services.scoring import Recomputed, engine_inputs, get_innings, load_rules, recompute
 
@@ -184,6 +185,7 @@ async def start_match(match_id: int, user: User = Depends(get_current_user),
     inns = await get_innings(db, m.id)
     inns[0].status = "active"
     m.status = "innings1"
+    await mark_performed(db, m, user)
     await events.innings_started(db, m, inns[0])
     await commit_match(db, m)
 

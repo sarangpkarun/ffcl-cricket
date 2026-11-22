@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { btnCls, btnGhost, ErrorText, Field, inputCls } from "@/components/ui-bits";
 import { post, type Live } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { show } from "./PlayerPanel";
 import { overLabel } from "./Scoreboard";
 
@@ -16,6 +17,10 @@ export function UmpireConsole({ live, lineups, onDone }: { live: Live; lineups: 
   const [batter, setBatter] = useState("");
   const [ov, setOv] = useState({ role: "bat", digits: "", reason: "" });
   const [pen, setPen] = useState({ team: "", runs: "", wickets: "", kind: "", reason: "" });
+  const { isAdmin } = useAuth();
+  const [wo, setWo] = useState({ team: "", reason: "" });
+  const [ab, setAb] = useState({ reason: "", replay: false });
+  const [rev, setRev] = useState("");
   const [fix, setFix] = useState({ innings: "1", over: "", ball: "", bat: "", bowl: "", reason: "" });
 
   const run = async (path: string, body?: unknown) => {
@@ -26,10 +31,47 @@ export function UmpireConsole({ live, lineups, onDone }: { live: Live; lineups: 
   const live_ = ["innings1", "innings2", "break"].includes(match.status);
   const needOver = (match.status === "innings1" || match.status === "innings2") && (!over || over.state === "resolved");
 
+  const closed = match.status === "completed" || match.status === "abandoned";
+  const declared = match.declared ?? null;
+  const preStart = ["scheduled", "toss", "ready"].includes(match.status);
+
   return (
     <section className="space-y-4 rounded-lg border-2 border-foreground p-4">
       <h2 className="font-medium">🧑‍⚖️ Umpire console</h2>
       <ErrorText msg={err} />
+
+      {declared && isAdmin && (
+        <form className="space-y-2 rounded-md bg-muted p-3" onSubmit={async (e) => { e.preventDefault(); if (await run("result/reverse", { reason: rev })) setRev(""); }}>
+          <p className="text-sm font-medium">This match was declared a {declared.kind === "walkover" ? "walkover" : "no result"}.</p>
+          <Field label="Reason for reversing" required minLength={3} value={rev} onChange={(e) => setRev(e.target.value)} />
+          <button className={btnGhost}>Reverse this decision</button>
+        </form>
+      )}
+
+      {preStart && (
+        <details className="space-y-2">
+          <summary className="cursor-pointer text-sm font-medium">Declare a walkover</summary>
+          <form className="mt-2 space-y-2" onSubmit={async (e) => { e.preventDefault(); await run("walkover", { absent_team_id: Number(wo.team), reason: wo.reason }); }}>
+            <select className={inputCls} required value={wo.team} onChange={(e) => setWo({ ...wo, team: e.target.value })}>
+              <option value="">Team that did not turn up</option>
+              {[match.team_a_id, match.team_b_id].map((t) => <option key={t} value={t}>{match.teams[String(t)]}</option>)}
+            </select>
+            <Field label="Reason" required minLength={3} value={wo.reason} onChange={(e) => setWo({ ...wo, reason: e.target.value })} />
+            <button className={btnGhost}>Award walkover</button>
+          </form>
+        </details>
+      )}
+
+      {!closed && (
+        <details className="space-y-2">
+          <summary className="cursor-pointer text-sm font-medium">Abandon match</summary>
+          <form className="mt-2 space-y-2" onSubmit={async (e) => { e.preventDefault(); await run("abandon", { reason: ab.reason, replay: ab.replay }); }}>
+            <Field label="Reason (e.g. rain)" required minLength={3} value={ab.reason} onChange={(e) => setAb({ ...ab, reason: e.target.value })} />
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ab.replay} onChange={(e) => setAb({ ...ab, replay: e.target.checked })} /> Arrange a replay (draft)</label>
+            <button className={btnGhost}>Abandon match</button>
+          </form>
+        </details>
+      )}
 
       {match.status === "scheduled" && <button className={btnCls} onClick={() => run("toss/open")}>Open toss</button>}
       {match.status === "ready" && <button className={btnCls} onClick={() => run("start")}>Start match</button>}

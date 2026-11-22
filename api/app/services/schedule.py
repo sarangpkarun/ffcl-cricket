@@ -3,17 +3,20 @@
 from datetime import timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     ChatMessage,
     ChatRoom,
     Match,
+    MatchDeclaration,
     MatchPlayer,
+    PointAdjustment,
     Team,
     TeamMember,
     Toss,
+    UmpireDuty,
     User,
     UserRole,
 )
@@ -107,4 +110,8 @@ async def remove_match(db: AsyncSession, match: Match) -> None:
         await db.execute(delete(ChatRoom).where(ChatRoom.id.in_(room_ids)))
     await db.execute(delete(MatchPlayer).where(MatchPlayer.match_id == match.id))
     await db.execute(delete(Toss).where(Toss.match_id == match.id))
+    await db.execute(delete(UmpireDuty).where(UmpireDuty.match_id == match.id))
+    await db.execute(delete(MatchDeclaration).where(MatchDeclaration.match_id == match.id))
+    await db.execute(update(PointAdjustment).where(PointAdjustment.match_id == match.id).values(match_id=None))
+    await db.execute(update(MatchDeclaration).where(MatchDeclaration.replay_match_id == match.id).values(replay_match_id=None))
     await db.delete(match)

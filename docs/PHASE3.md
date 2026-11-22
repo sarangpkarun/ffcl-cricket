@@ -62,7 +62,7 @@ Defaults I chose (tell me if any are wrong; each is a setting):
 - API and UI: **Points table** page (position, played, won, tied, lost, points, NRR, adjustments), highlights qualifying places, per-team form guide.
 - **Exit:** play a full 4-team season; the table is correct after corrections (including a flipped result) and the final is created without admin action.
 
-### Sprint 11: Walkovers, abandonment, umpire duty, adjustments (week 3)
+### Sprint 11: Walkovers, abandonment, umpire duty, adjustments (week 3) ✅ done
 - Migration 0008; umpire or admin declares a walkover (who was absent) or abandons a match (reason, replay option); both announce in the match chat, notify everyone and write the ledger row; no ball events are created.
 - Umpire duty records are created from the umpire assignment, marked performed when the umpire runs the match, or missed by admin or umpire (which creates the -1 point adjustment). Admins can reverse it; every step is audited.
 - Admin **Points adjustments** screen (add, list, void).
@@ -145,3 +145,19 @@ Decisions and notes:
 - Point adjustments are read by the table now (voided ones ignored); the screens to create them come in Sprint 11. Walkover and abandonment points are already in the engine and the rule set; Sprint 11 writes the ledger rows.
 - The test database is now reset with `DROP SCHEMA` instead of per-table drops, because the champion link makes seasons and teams reference each other.
 - Only two or four qualifiers are supported; anything else is refused.
+
+## Sprint 11 outcome
+Built:
+- **Walkovers**: an admin or the match umpire declares which team did not turn up, only before the match starts (scheduled, toss or ready). The present team is awarded the win (2 points), the absent team gets 0, no scores or ball events exist, and net run rate and statistics ignore the match. The match chat gets a system line and both teams and the umpire are notified. A captain cannot declare one for their own team.
+- **Abandonment**: any official can abandon a match that has not finished. If nothing was bowled the ledger row is `abandoned`; if balls were played it is `no_result` and the balls are kept. Either way each team gets 1 point and net run rate ignores it. Optionally a **draft replay** is created (same teams, umpire and optional time); a replayed knockout match keeps its bracket label so the final still appears when the replay is played. An abandoned match no longer holds up "league complete".
+- **Reversal** (admins only, with a reason): the match returns to the status it had before. A live match comes back paused so the umpire resumes on purpose. An unpublished replay is removed; a published replay blocks the reversal (HTTP 409). Reversing a walkover in a semi-final updates or holds the final, and is refused once the final has started. Every declaration and reversal is kept in `match_declarations` and audited.
+- **Umpire duty** (`umpire_duties`): created and kept in step with the umpire assignment (changing the umpire marks the old duty `replaced`), marked `performed` when the umpire runs the match, and marked `missed` by an admin or the umpire who stepped in. A missed duty creates a point adjustment of minus `umpire_duty_penalty` (default 1) against the team that supplied the umpire; reversing it voids the adjustment.
+- **Points adjustments**: add (manual or conduct, plus or minus up to 50, with a reason), list and void, all audited, with the affected team notified. The table already read them.
+- **Screens**: walkover, abandon and reverse controls in the umpire console (driven by `live.match.declared`), and admin **Points adjustments** and **Umpire duties** pages linked from the admin home.
+- Migration 0008 (declarations, duties; duty rows backfilled for existing matches).
+
+Tests: 11 new API tests (walkover effects and validation, reversal, abandonment before and during a match, replays, knockout interactions) and one browser test (walkover, reversal, abandonment, adjustment and missed duty).
+
+Deliberate limits:
+- A match in progress can be abandoned but not given a walkover.
+- A walkover reversed after other results depended on it is only blocked by the final-started rule; there is no wider dependency check.

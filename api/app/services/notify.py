@@ -26,6 +26,8 @@ KINDS: dict[str, tuple[str, bool]] = {
     "deadline_alert": ("My submission deadline is close", True),
     "fixtures_published": ("New fixtures are published", True),
     "fixture_change": ("One of my matches is rescheduled", True),
+    "adjustment": ("My team's points are adjusted", True),
+    "duty": ("An umpire duty is recorded as missed", True),
 }
 
 

@@ -16,6 +16,8 @@ function Admin() {
     <div className="space-y-5">
       <Link href="/admin/users" className="block rounded-lg border p-3 text-center text-sm">👥 People (roles, suspend)</Link>
       <Link href="/admin/moderation" className="block rounded-lg border p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>
+      <Link href="/admin/adjustments" className="block rounded-lg border p-3 text-center text-sm">⚖️ Points adjustments</Link>
+      <Link href="/admin/duties" className="block rounded-lg border p-3 text-center text-sm">🧑‍⚖️ Umpire duties</Link>
       <h1 className="text-xl font-semibold">Seasons</h1>
       <ul className="space-y-2">
         {seasons.map((s) => (

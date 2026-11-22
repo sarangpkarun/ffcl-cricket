@@ -397,3 +397,37 @@ class PointAdjustment(Base):
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = _now()
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class MatchDeclaration(Base):
+    """A walkover or an abandonment. Kept (not deleted) when reversed, so the history stays visible."""
+
+    __tablename__ = "match_declarations"
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(10))  # walkover|abandoned
+    absent_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
+    reason: Mapped[str] = mapped_column(Text)
+    replay_match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"))
+    prev_status: Mapped[str] = mapped_column(String(16))  # what the match was before, to restore on reversal
+    declared_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    declared_at: Mapped[datetime] = _now()
+    reversed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reversed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reverse_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class UmpireDuty(Base):
+    """Who was meant to umpire a match, which team supplied them, and whether they turned up."""
+
+    __tablename__ = "umpire_duties"
+    __table_args__ = (UniqueConstraint("match_id", "umpire_id"),)
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), index=True)
+    umpire_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))  # the supplying team, if any
+    status: Mapped[str] = mapped_column(String(10), default="assigned")  # assigned|performed|missed|replaced
+    note: Mapped[str | None] = mapped_column(Text)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    adjustment_id: Mapped[int | None] = mapped_column(ForeignKey("point_adjustments.id"))

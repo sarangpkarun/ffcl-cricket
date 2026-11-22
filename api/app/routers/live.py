@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.deps import get_current_user, is_admin
 from app.engine import BAT, BOWL, batting_stats, bowling_stats, summarize_innings
 from app.routers.play import digits_of, get_submissions
+from app.services.declarations import active_declaration
 from app.services.schedule import ensure_visible
 from app.services.scoring import engine_inputs, get_innings, load_rules
 
@@ -88,12 +89,15 @@ async def live(match_id: int, user: User = Depends(get_current_user),
                                    .order_by(Over.number.desc()).limit(1))
             if over:
                 current = await over_view(db, over, user, official)
+    decl = await active_declaration(db, m.id)
     return {
         "match": {"id": m.id, "match_no": m.match_no, "status": m.status, "paused": m.paused,
                   "seq": m.seq, "result": m.result_text, "winner_team_id": m.winner_team_id,
                   "umpire_id": m.umpire_id, "overs": rules.overs, "wickets": rules.wickets,
                   "teams": {str(i): t.name for i, t in teams.items()},
-                  "team_a_id": m.team_a_id, "team_b_id": m.team_b_id},
+                  "team_a_id": m.team_a_id, "team_b_id": m.team_b_id,
+                  "declared": {"kind": decl.kind, "reason": decl.reason, "absent_team_id": decl.absent_team_id,
+                               "replay_match_id": decl.replay_match_id} if decl else None},
         "you": {"official": official},
         "toss": {"winner_team_id": toss.winner_team_id, "decision": toss.decision} if toss else None,
         "over": current,

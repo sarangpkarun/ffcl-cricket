@@ -9,9 +9,12 @@ from sqlalchemy import text
 from app.core.config import assert_production_safe, settings
 from app.db.session import engine
 from app.routers import (
+    adjustments,
     admin_users,
     auth,
     chat,
+    declarations,
+    duties,
     fixtures,
     live,
     matches,
@@ -42,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation,
-          notifications, ws_me, admin_users, fixtures, standings):
+          notifications, ws_me, admin_users, fixtures, standings, declarations, duties, adjustments):
     app.include_router(r.router)
 
 

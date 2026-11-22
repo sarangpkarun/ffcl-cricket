@@ -14,6 +14,7 @@ from app.schemas import LineupIn, MatchDetail, MatchIn, MatchOut, MatchPatch
 from app.services import match_events
 from app.services.announce import say, team_names
 from app.services.chat import ensure_match_rooms
+from app.services.duties import sync_duty
 from app.services.notify import notify
 from app.services.outbox import flush as flush_outbox
 from app.services.schedule import ensure_visible, find_conflicts, team_people
@@ -84,6 +85,7 @@ async def create_match(
         db.add(AuditLog(actor_id=admin.id, action="match.force_create", entity="match", entity_id=match.id,
                         reason="created despite clashes", after={"conflicts": clashes}))
     await ensure_match_rooms(db, match)
+    await sync_duty(db, match)
     if match.umpire_id:
         await match_events.umpire_assigned(db, match, match.umpire_id)
     await db.commit()
@@ -141,6 +143,8 @@ async def update_match(
     for k, v in data.items():
         setattr(m, k, v)
     m.seq += 1
+    if "umpire_id" in data:
+        await sync_duty(db, m)
     if clashes:
         db.add(AuditLog(actor_id=admin.id, action="match.force_update", entity="match", entity_id=m.id,
                         reason="saved despite clashes", after={"conflicts": clashes}))

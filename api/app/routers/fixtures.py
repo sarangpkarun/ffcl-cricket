@@ -16,6 +16,7 @@ from app.engine.rules import DEFAULT_RULES
 from app.realtime import publish_change
 from app.services import match_events
 from app.services.chat import ensure_match_rooms
+from app.services.duties import sync_duty
 from app.services.notify import notify
 from app.services.outbox import flush as flush_outbox
 from app.services.schedule import (
@@ -169,6 +170,7 @@ async def generate(season_id: int, body: GenerateParams, admin: User = Depends(r
         db.add(match)
         await db.flush()
         await ensure_match_rooms(db, match)
+        await sync_duty(db, match)
         created.append(match.id)
     _audit(db, admin, "fixtures.generate", "season", season_id,
            after={"stage": stage.id, "matches": len(created), "legs": body.legs})

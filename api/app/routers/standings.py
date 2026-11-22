@@ -16,6 +16,7 @@ from app.realtime import publish_change
 from app.services import match_events
 from app.services.announce import say_season
 from app.services.chat import ensure_match_rooms
+from app.services.duties import sync_duty
 from app.services.notify import notify
 from app.services.outbox import flush as flush_outbox
 from app.services.results import rebuild_ledger, season_config, season_table
@@ -121,6 +122,7 @@ async def generate_knockouts(season_id: int, body: KnockoutIn, admin: User = Dep
         db.add(m)
         await db.flush()
         await ensure_match_rooms(db, m)
+        await sync_duty(db, m)
         created.append(m)
     names = {t.id: t.name for t in await db.scalars(select(Team).where(Team.id.in_(seeds)))}
     for m in created:

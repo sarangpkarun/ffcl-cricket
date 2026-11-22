@@ -72,6 +72,25 @@ async def sync_ledger(db: AsyncSession, match: Match, rec: Recomputed | None) ->
     await advance_knockouts(db, match)
 
 
+async def set_declared_result(db: AsyncSession, match: Match, result_type: str, winner: int | None) -> None:
+    """Ledger row for a walkover, abandonment or no-result: points only, no figures."""
+    existing = await db.scalar(select(MatchResult).where(MatchResult.match_id == match.id))
+    if existing is None:
+        db.add(MatchResult(match_id=match.id, result_type=result_type, winner_team_id=winner))
+    else:
+        existing.result_type, existing.winner_team_id = result_type, winner
+        existing.a_runs = existing.a_balls = existing.b_runs = existing.b_balls = None
+        existing.a_all_out = existing.b_all_out = False
+    await db.flush()
+
+
+async def clear_declared_result(db: AsyncSession, match: Match) -> None:
+    existing = await db.scalar(select(MatchResult).where(MatchResult.match_id == match.id))
+    if existing is not None and existing.result_type in ("walkover", "abandoned", "no_result"):
+        await db.delete(existing)
+        await db.flush()
+
+
 async def rebuild_ledger(db: AsyncSession, season_id: int | None = None) -> int:
     """Recompute every completed match from its ball events. A repair tool and a test oracle."""
     q = select(Match).where(Match.status == "completed")
@@ -150,7 +169,8 @@ async def advance_knockouts(db: AsyncSession, match: Match) -> None:
         return
     season = await db.get(Season, match.season_id)
     assert season is not None
-    matches = list(await db.scalars(select(Match).where(Match.stage_id == stage.id).order_by(Match.id)))
+    matches = [m for m in await db.scalars(select(Match).where(Match.stage_id == stage.id).order_by(Match.id))
+               if m.status != "abandoned"]  # an abandoned tie is replaced by its replay
     firsts = sorted((m for m in matches if m.round_label != "Final"), key=lambda m: m.round_label or "")
     final = next((m for m in matches if m.round_label == "Final"), None)
     if int(stage.config.get("qualifiers", 4)) == 4:
@@ -176,6 +196,9 @@ async def _sync_final(db: AsyncSession, season: Season, semis: list[Match], fina
             db.add(final)
             await db.flush()
             await ensure_match_rooms(db, final)
+            from app.services.duties import sync_duty  # imported here: duties imports this module
+
+            await sync_duty(db, final)
             people = await team_people(db, w1) | await team_people(db, w2)
             await notify(db, people, "fixtures_published", "The final is set", f"{versus} (match {final.match_no}) on {_when(when)}.",
                          {"link": f"/matches/{final.id}", "match_id": final.id}, f"final:{final.id}:{w1}:{w2}")
