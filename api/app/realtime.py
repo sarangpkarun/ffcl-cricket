@@ -40,3 +40,15 @@ async def publish_change(match_id: int, seq: int) -> None:
         await client().publish(channel(match_id), json.dumps({"type": "changed", "seq": seq}))
     except Exception:
         log.warning("redis publish failed for match %s", match_id, exc_info=True)
+
+
+def room_channel(room_id: int) -> str:
+    return f"room:{room_id}"
+
+
+async def publish_room(room_id: int, payload: dict) -> None:
+    """Chat events. Safe to carry message bodies: every subscriber is authorised for the room."""
+    try:
+        await client().publish(room_channel(room_id), json.dumps(payload, default=str))
+    except Exception:
+        log.warning("redis publish failed for room %s", room_id, exc_info=True)

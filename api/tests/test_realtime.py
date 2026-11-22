@@ -1,60 +1,7 @@
-import asyncio
 import json
-import socket
 
-import pytest
-import uvicorn
-import websockets
-
-from app.main import app
 from tests.helpers import live, play, run_toss, setup_match, start
-
-
-@pytest.fixture
-async def ws_url():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-    task = asyncio.create_task(server.serve())
-    for _ in range(100):
-        if server.started:
-            break
-        await asyncio.sleep(0.05)
-    yield f"ws://127.0.0.1:{port}"
-    server.should_exit = True
-    await task
-
-
-def token_of(actor) -> str:
-    return actor.h["Authorization"].split()[1]
-
-
-async def recv(ws, timeout=3):
-    return json.loads(await asyncio.wait_for(ws.recv(), timeout))
-
-
-async def connect(url, token):
-    """Open a socket and authenticate with the first message (tokens never go in the URL)."""
-    ws = await websockets.connect(url)
-    await ws.send(json.dumps({"type": "auth", "token": token}))
-    return ws
-
-
-async def next_change(ws, timeout=3):
-    while True:
-        m = await recv(ws, timeout)
-        if m["type"] == "changed":
-            return m
-
-
-async def closed_with(url, first_message=None, token=None):
-    ws = await websockets.connect(url)
-    if token is not None or first_message is not None:
-        await ws.send(first_message if first_message is not None else json.dumps({"type": "auth", "token": token}))
-    with pytest.raises(websockets.ConnectionClosed) as e:
-        await asyncio.wait_for(ws.recv(), 10)
-    return e.value.rcvd.code
+from tests.ws_helpers import closed_with, connect, next_change, recv, token_of
 
 
 async def test_socket_requires_valid_token(make_user, ws_url):

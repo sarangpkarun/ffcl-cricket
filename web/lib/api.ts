@@ -180,3 +180,24 @@ export type Live = {
   over: OverView | null;
   innings: InningsCard[];
 };
+
+export type ChatMsg = {
+  id: number;
+  room_id: number;
+  kind: "user" | "system" | "announcement";
+  sender: { id: number; name: string; player_code: string } | null;
+  body: string | null;
+  meta: unknown;
+  client_id: string | null;
+  created_at: string;
+  edited_at: string | null;
+  deleted: boolean;
+};
+export type RoomInfo = {
+  id: number;
+  kind: "season" | "match" | "umpire";
+  title: string;
+  can_post: boolean;
+  moderator: boolean;
+};
+export type Pending = { client_id: string; body: string; failed: boolean; error?: string };

@@ -7,6 +7,7 @@ from app.db.models import RuleSet, Season, User
 from app.db.session import get_session
 from app.deps import get_current_user, require_admin
 from app.schemas import SeasonIn, SeasonOut, SeasonPatch
+from app.services.chat import ensure_season_room
 
 router = APIRouter(tags=["seasons"])
 
@@ -19,6 +20,8 @@ async def create_season(
     season = Season(**body.model_dump(), rule_set_id=rule.id if rule else None)
     db.add(season)
     try:
+        await db.flush()
+        await ensure_season_room(db, season)
         await db.commit()
     except IntegrityError as e:
         await db.rollback()

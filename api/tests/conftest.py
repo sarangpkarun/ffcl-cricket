@@ -1,7 +1,12 @@
+import asyncio
+import contextlib
 import os
+import socket
 
 import pytest
 import pytest_asyncio
+import redis.asyncio as aioredis
+import uvicorn
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
@@ -100,3 +105,33 @@ def make_user(client, db):
         return Actor(client, db, me["id"], h, phone)
 
     return _make
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _clean_redis():
+    """Every test restarts ids at 1, so stale rate-limit/presence keys from the last test must go."""
+    r = aioredis.from_url(settings.redis_url)
+    with contextlib.suppress(Exception):  # Redis is optional for tests that don't touch it
+        keys = [k async for k in r.scan_iter("rl:*")] + [k async for k in r.scan_iter("presence:*")]
+        if keys:
+            await r.delete(*keys)
+    with contextlib.suppress(Exception):
+        await r.aclose()
+
+
+@pytest_asyncio.fixture
+async def ws_url():
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+    task = asyncio.create_task(server.serve())
+    for _ in range(100):
+        if server.started:
+            break
+        await asyncio.sleep(0.05)
+    yield f"ws://127.0.0.1:{port}"
+    server.should_exit = True
+    await task
+
+

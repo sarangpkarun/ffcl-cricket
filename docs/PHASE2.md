@@ -33,7 +33,7 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 - **Presence and typing:** Redis keys with TTL (heartbeat every 20 s); typing events throttled to one per 2 s per user.
 - **Safety:** per-user rate limit (10 messages / 10 s / room, Redis token bucket), body ≤ 2000 chars, plain text only (React escapes; no HTML/markdown rendering), image MIME sniffed server-side, uploads only through our presigned flow.
 
-## Data model (migration 0003 chat, 0004 notifications)
+## Data model (0003 rooms + messages, shipped in Sprint 5; Sprint 6 adds reactions, reads, reports, mutes, reply/pin/image columns; Sprint 7 adds notifications)
 - `chat_rooms(id, kind season|match|umpire, season_id, match_id, scope_key unique)`: created automatically with the season, and with each match (match + umpire rooms).
 - `chat_messages(id bigserial, room_id, sender_id null for system, kind user|system|announcement|sticker, body, meta jsonb, reply_to_id, image_url, client_id, created_at, edited_at, deleted_at, deleted_by, pinned_at, pinned_by)`; unique `(room_id, sender_id, client_id)`; GIN full-text index on `body` for search.
 - `message_reactions(message_id, user_id, emoji)` unique triple.
@@ -45,7 +45,7 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 
 ## Sprints (about 4 weeks)
 
-### Sprint 5: Chat foundation (week 1)
+### Sprint 5: Chat foundation (week 1) ✅ done
 - Migration 0003; auto-create rooms (hook season creation in `routers/seasons.py`, match creation in `routers/matches.py`); backfill existing seasons/matches.
 - `services/chat.py`: one `can_read(room, user)` / `can_post(room, user)` function used by every endpoint and socket (single place for the access matrix).
 - REST: send, list (cursor), edit (15-min window), soft delete.
@@ -105,3 +105,12 @@ Duplicate send (same `client_id`); message sent while the match state changes; s
 - Match announcements and notifications fire for every listed event.
 - No path (REST, socket, search, system message) exposes hidden digits or a room the user cannot read.
 - Tests, lint, browser test and load test green; documented in `docs/PHASE2.md`.
+
+## Sprint 5 outcome
+Built: rooms (season, match, umpire) created with each season/match and backfilled; one `can_read`/`can_post` rule used by every endpoint and socket; send (idempotent via `client_id`), cursor history, edit (15 min), soft delete, rate limit (10 per 10 s per room); room socket with presence and periodic re-check that drops users who lose access or log out; Chat tab, Score | Chat | Umpire tabs on the match page; 133 API tests, 2 browser tests.
+
+Decisions made while building:
+- A non-member gets **404** from REST and **4403** from the socket for both "no such room" and "not yours", so room ids cannot be probed.
+- The access token only gates the socket handshake; a live session keeps its socket until the session ends or access is lost.
+- Presence uses heartbeats (20 s) with a 60 s stale limit; a user with two tabs may show offline for up to 20 s after closing one.
+- Admins cannot edit other people's messages (only delete).

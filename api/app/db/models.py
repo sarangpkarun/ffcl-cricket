@@ -4,9 +4,11 @@ from datetime import datetime
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -237,3 +239,34 @@ class AuditLog(Base):
     before: Mapped[dict | None] = mapped_column(JSON)
     after: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = _now()
+
+
+class ChatRoom(Base):
+    """One per season, plus a match room and an umpire room for each match."""
+
+    __tablename__ = "chat_rooms"
+    id: Mapped[int] = _pk()
+    kind: Mapped[str] = mapped_column(String(10))  # season|match|umpire
+    season_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"))
+    match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"))
+    scope_key: Mapped[str] = mapped_column(String(32), unique=True)  # e.g. season:3, match:7
+    created_at: Mapped[datetime] = _now()
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    __table_args__ = (
+        UniqueConstraint("room_id", "sender_id", "client_id"),  # retries never duplicate
+        Index("ix_chat_messages_room_id_id", "room_id", "id"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    room_id: Mapped[int] = mapped_column(ForeignKey("chat_rooms.id"))
+    sender_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # null = system
+    kind: Mapped[str] = mapped_column(String(12), default="user")  # user|system|announcement
+    body: Mapped[str | None] = mapped_column(Text)
+    meta: Mapped[dict | None] = mapped_column(JSON)
+    client_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = _now()
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

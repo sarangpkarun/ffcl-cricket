@@ -9,6 +9,7 @@ from app.engine.rules import DEFAULT_RULES
 from app.realtime import publish_change
 from app.routers.teams import can_manage
 from app.schemas import LineupIn, MatchDetail, MatchIn, MatchOut, MatchPatch
+from app.services.chat import ensure_match_rooms
 
 router = APIRouter(tags=["matches"])
 
@@ -67,6 +68,8 @@ async def create_match(
         season_id=season_id, match_no=next_no, rule_set_id=rule_set_id, **body.model_dump()
     )
     db.add(match)
+    await db.flush()
+    await ensure_match_rooms(db, match)
     await db.commit()
     return match
 

@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { ChatRoom } from "@/components/chat/ChatRoom";
 import { PlayerPanel } from "@/components/match/PlayerPanel";
 import { Scoreboard } from "@/components/match/Scoreboard";
 import { TossPanel } from "@/components/match/TossPanel";
@@ -51,6 +52,8 @@ function MatchPage() {
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [teams, setTeams] = useState<TeamDetail[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState<"score" | "chat" | "umpire">("score");
+  const [rooms, setRooms] = useState<{ match: { room_id: number } | null; umpire: { room_id: number } | null } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -61,6 +64,9 @@ function MatchPage() {
   }, [id]);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    api<NonNullable<typeof rooms>>(`/matches/${id}/rooms`).then(setRooms).catch(() => setRooms(null));
+  }, [id]);
   if (!match || !me || !live) return <ErrorText msg={err ?? error} />;
 
   const done = () => { void refresh(); void load(); };
@@ -73,8 +79,25 @@ function MatchPage() {
   const active = live.innings.find((i) => i.status === "active");
   const battingName = active ? live.match.teams[String(active.batting_team_id)] : "";
 
+  const tabs = [
+    { key: "score" as const, label: "Score" },
+    ...(rooms?.match ? [{ key: "chat" as const, label: "Chat" }] : []),
+    ...(rooms?.umpire ? [{ key: "umpire" as const, label: "Umpire" }] : []),
+  ];
+  const chatRoom = tab === "chat" ? rooms?.match : tab === "umpire" ? rooms?.umpire : null;
+
   return (
     <div className="space-y-5">
+      {tabs.length > 1 && (
+        <div role="tablist" className="flex rounded-lg border p-1">
+          {tabs.map((t) => (
+            <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
+              className={`flex-1 rounded-md py-2 text-sm ${tab === t.key ? "bg-foreground text-background" : ""}`}>{t.label}</button>
+          ))}
+        </div>
+      )}
+      {chatRoom && <ChatRoom key={chatRoom.room_id} roomId={chatRoom.room_id} />}
+      {!chatRoom && <>
       <p className={`text-xs ${connected ? "text-green-700" : "text-amber-700"}`} aria-live="polite">
         {connected ? "● Live" : "○ Reconnecting…"}
       </p>
@@ -108,6 +131,7 @@ function MatchPage() {
           <button className={btnGhost} onClick={async () => { await patch(`/matches/${id}`, { umpire_id: null }).catch(() => {}); await load(); }}>Clear umpire</button>
         </section>
       )}
+      </>}
     </div>
   );
 }
