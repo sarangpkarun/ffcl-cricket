@@ -52,3 +52,14 @@ async def publish_room(room_id: int, payload: dict) -> None:
         await client().publish(room_channel(room_id), json.dumps(payload, default=str))
     except Exception:
         log.warning("redis publish failed for room %s", room_id, exc_info=True)
+
+
+def user_channel(user_id: int) -> str:
+    return f"user:{user_id}"
+
+
+async def publish_user(user_id: int, payload: dict) -> None:
+    try:
+        await client().publish(user_channel(user_id), json.dumps(payload, default=str))
+    except Exception:
+        log.warning("redis publish failed for user %s", user_id, exc_info=True)

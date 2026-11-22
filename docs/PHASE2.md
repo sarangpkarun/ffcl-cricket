@@ -60,7 +60,7 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 - UI: `/admin/moderation` (reports, mutes, announcement composer).
 - **Exit:** every chat feature in the roadmap works on a phone; a reported message can be removed and its author muted.
 
-### Sprint 7: System messages, umpire channel, notifications (week 3)
+### Sprint 7: System messages, umpire channel, notifications (week 3) ✅ done
 - `post_system()` hooks in `routers/play.py` (same transaction, published after commit): toss result and choice, innings start, wicket and six lines, over summary with running score, penalty (and void), innings break with target, result. Umpire-room entries for overrides, corrections, penalty voids.
 - Chat lock for the active batter and bowler while an over's submissions are open (server-enforced, shown in the composer).
 - Notifications API (`GET /notifications`, mark read, read all, unread count), bell with badge, `/notifications` page, `/ws/me`, per-kind preferences. Triggers: umpire assigned, toss ready (captains), your over has started ("submit digits now"), penalty, wicket on your team, over complete, result, announcement, mention, reply.
@@ -124,3 +124,19 @@ Decisions made while building:
 - Admins cannot be muted. Muting is admin-only; the match umpire can delete and pin in their own match.
 - Mentions are notified in Sprint 7 (the notifications table does not exist yet); for now the mentioned message is highlighted for the person mentioned.
 - Search results do not jump to the message in context yet.
+
+## Sprint 7 outcome
+Built:
+- **Match announcements** (system messages, visually distinct): toss result and choice, innings start, over open (with powerplay note), one line per wicket and per six, an over summary with the running score, innings break with the target, penalties and their cancellation, pause/resume, result, and withdrawn/updated results after a correction. All are written in the same transaction as the state change and pushed only after it commits (an `outbox` on the session), and a test proves a failed request leaves nothing behind.
+- **Umpire channel**: overrides, corrections (runs before and after), penalties and cancellations with the umpire's reason. Players never see these; the match chat only gets the neutral version.
+- **Chat lock**: while an over's submissions are open, that over's batter and bowler cannot post, react or edit in the match chat (season chat is unaffected). It lifts when the umpire locks submissions. The room tells connected clients to re-read their permissions, so the composer swaps itself live.
+- **Notifications** (migration 0005): umpire assigned, toss open (captains), your over (batter and bowler), wicket (batting team), penalty (penalised team), result (both teams and umpire), announcement (room members), mention, reply, and an optional per-over note (off by default). Idempotent per user, kind and key; per-user preferences; inbox with read state and paging; `/ws/me` push; bell with badge, toast and an inbox page with settings.
+
+Decisions made while building:
+- Digits never appear in any announcement; everything is generated after the reveal or does not mention digits.
+- The chat lock covers reactions and edits too, since both could carry signals.
+- The lock lifts at "lock submissions", not at the reveal: once both sets of digits are locked there is nothing left to leak.
+- Over-by-over notifications default off (noise); wickets default on.
+- Mentions and replies notify once per message (a mention wins over a reply); editing never re-notifies; you are never notified about your own messages.
+- Toasts only show for events that arrive live; anything missed while offline is picked up as unread in the bell.
+- Not done yet (Sprint 8): scheduled reminders (match start, toss, 30-second deadline alert) need the background worker.

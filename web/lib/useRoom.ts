@@ -36,6 +36,7 @@ export function useRoom(roomId: number, myId: number) {
   const [typing, setTyping] = useState<Person[]>([]);
   const [reads, setReads] = useState<Record<number, { name: string; last: number }>>({});
   const [connected, setConnected] = useState(false);
+  const [stateTick, setStateTick] = useState(0); // bumps when the room's rules change (e.g. the submission chat lock)
   const [error, setError] = useState<string | null>(null);
   const last = useRef(0);
   const presenceVersion = useRef(0); // bumps on every live presence event
@@ -129,6 +130,9 @@ export function useRoom(roomId: number, myId: number) {
           case "edited":
             take([ev.message as ChatMsg]);
             if ((ev.message as ChatMsg).kind === "announcement") applyPin(ev.message as ChatMsg);
+            break;
+          case "room_state":
+            setStateTick((t) => t + 1);
             break;
           case "pinned":
             take([ev.message as ChatMsg]);
@@ -265,7 +269,7 @@ export function useRoom(roomId: number, myId: number) {
   }, [roomId]);
 
   return {
-    messages, pending, pinned, hasMore, online, typing, reads, connected, error,
+    messages, pending, pinned, hasMore, online, typing, reads, connected, error, stateTick,
     send, retrySend, discard, loadOlder, edit, remove, react, setPin, report, announce, sendTyping, markRead,
   };
 }

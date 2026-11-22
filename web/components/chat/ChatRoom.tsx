@@ -46,9 +46,12 @@ export function ChatRoom({ roomId }: { roomId: number }) {
   useFillHeight(box);
 
   useEffect(() => {
-    api<RoomInfo>(`/rooms/${roomId}`).then(setInfo).catch(() => setInfo(null));
     api<{ reactions: string[] }>("/chat/reactions").then((x) => setReactionSet(x.reactions)).catch(() => {});
-  }, [roomId]);
+  }, []);
+  // Re-read the room's rules on load and whenever they change (the batter/bowler chat lock).
+  useEffect(() => {
+    api<RoomInfo>(`/rooms/${roomId}`).then(setInfo).catch(() => setInfo(null));
+  }, [roomId, r.stateTick]);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000); // re-evaluate the 15-minute edit window
     return () => clearInterval(t);

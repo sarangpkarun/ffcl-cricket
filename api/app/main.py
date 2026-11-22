@@ -11,11 +11,13 @@ from app.routers import (
     live,
     matches,
     moderation,
+    notifications,
     play,
     seasons,
     teams,
     users,
     ws,
+    ws_me,
     ws_rooms,
 )
 
@@ -26,7 +28,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation):
+for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation,
+          notifications, ws_me):
     app.include_router(r.router)
 
 

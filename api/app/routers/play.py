@@ -26,7 +26,9 @@ from app.deps import get_current_user, is_admin
 from app.engine import BAT, BOWL, RuleConfig, parse_digits, play_over, validate_submission
 from app.realtime import publish_change
 from app.routers.teams import can_manage
-from app.services.scoring import engine_inputs, get_innings, load_rules, recompute
+from app.services import match_events as events
+from app.services.outbox import flush as flush_outbox
+from app.services.scoring import Recomputed, engine_inputs, get_innings, load_rules, recompute
 
 router = APIRouter(tags=["play"])
 
@@ -61,6 +63,7 @@ async def commit_match(db: AsyncSession, m: Match) -> None:
     match_id, seq = m.id, m.seq
     await db.commit()
     await publish_change(match_id, seq)
+    await flush_outbox(db)  # announcements and notifications go out only after the commit
 
 
 async def active_innings(db: AsyncSession, m: Match) -> Innings:
@@ -113,6 +116,7 @@ async def toss_open(match_id: int, user: User = Depends(get_current_user),
             raise HTTPException(409, "Both teams need a lineup before the toss")
     db.add(Toss(match_id=m.id))
     m.status = "toss"
+    await events.toss_opened(db, m)
     await commit_match(db, m)
 
 
@@ -163,6 +167,7 @@ async def toss_confirm(match_id: int, user: User = Depends(get_current_user),
     toss.confirmed_by = user.id
     m.status = "ready"
     audit(db, user, "toss.confirm", "match", m.id, after={"winner": toss.winner_team_id, "decision": toss.decision})
+    await events.toss_confirmed(db, m, toss.winner_team_id, toss.decision)
     await commit_match(db, m)
 
 
@@ -177,6 +182,7 @@ async def start_match(match_id: int, user: User = Depends(get_current_user),
     inns = await get_innings(db, m.id)
     inns[0].status = "active"
     m.status = "innings1"
+    await events.innings_started(db, m, inns[0])
     await commit_match(db, m)
 
 
@@ -191,6 +197,7 @@ async def next_innings(match_id: int, user: User = Depends(get_current_user),
     inns = await get_innings(db, m.id)
     inns[1].status = "active"
     m.status = "innings2"
+    await events.innings_started(db, m, inns[1])
     await commit_match(db, m)
 
 
@@ -201,6 +208,7 @@ async def _set_paused(db: AsyncSession, match_id: int, user: User, paused: bool)
         raise HTTPException(409, "Only a live match can be paused")
     m.paused = paused
     audit(db, user, "match.pause" if paused else "match.resume", "match", m.id)
+    await events.paused(db, m, paused)
     await commit_match(db, m)
 
 
@@ -267,11 +275,12 @@ async def over_signal(match_id: int, user: User = Depends(get_current_user),
     await ensure_official(db, user, m)
     ensure_running(m)
     rules = await load_rules(db, m)
-    _, over = await _current(db, m)
+    inn, over = await _current(db, m)
     if over.state != "awaiting_signal":
         raise HTTPException(409, "Signal already sent")
     over.state = "submissions_open"
     over.deadline_at = datetime.now(UTC) + timedelta(seconds=rules.submission_seconds)
+    await events.over_signalled(db, m, inn, over)
     await commit_match(db, m)
 
 
@@ -358,6 +367,7 @@ async def override_digits(match_id: int, body: OverrideIn, user: User = Depends(
     else:
         await _store(db, over, body.role, owner, digits, by=user.id)
     audit(db, user, "digits.override", "over", over.id, body.reason, before, {"role": body.role})
+    await events.digits_overridden(db, m, over, body.role, user.name, body.reason)
     await commit_match(db, m)
 
 
@@ -375,6 +385,7 @@ async def over_lock(match_id: int, user: User = Depends(get_current_user),
     if missing:
         raise HTTPException(409, f"Still waiting for: {', '.join(missing)} (use override if absent)")
     over.state = "locked"
+    await events.over_locked(db, m)
     await commit_match(db, m)
 
 
@@ -413,7 +424,9 @@ async def over_resolve(match_id: int, user: User = Depends(get_current_user),
                          bowler_digit=b.bowler_digit, runs=b.runs, is_wicket=b.wicket, created_by=user.id))
     over.state = "resolved"
     await db.flush()
-    await recompute(db, m, rules)
+    prev_status, prev_result = m.status, m.result_text
+    rec = await recompute(db, m, rules)
+    await events.over_resolved(db, m, inn, over, new, rec, prev_status, prev_result, rules)
     await commit_match(db, m)
     return {"balls": len(new), "match_status": m.status, "result": m.result_text}
 
@@ -462,7 +475,10 @@ async def add_penalty(match_id: int, body: PenaltyIn, user: User = Depends(get_c
         raise HTTPException(409, "Duplicate penalty") from e
     audit(db, user, "penalty.apply", "penalty", pen.id, body.reason,
           after={"team": body.team_id, "runs": body.runs, "wickets": body.wickets})
-    await recompute(db, m, rules)
+    prev_status, prev_result = m.status, m.result_text
+    rec = await recompute(db, m, rules)
+    await events.penalty_applied(db, m, pen, user.name)
+    await events.status_changed(db, m, rec, prev_status, prev_result)
     await commit_match(db, m)
     return {"id": pen.id, "duplicate": False, "match_status": m.status}
 
@@ -486,7 +502,10 @@ async def void_penalty(match_id: int, penalty_id: int, body: VoidIn,
     pen.voided_at = datetime.now(UTC)
     audit(db, user, "penalty.void", "penalty", pen.id, body.reason)
     await db.flush()
-    await _guard_and_recompute(db, m, rules)
+    prev_status, prev_result = m.status, m.result_text
+    rec = await _guard_and_recompute(db, m, rules)
+    await events.penalty_voided(db, m, pen, user.name, body.reason)
+    await events.status_changed(db, m, rec, prev_status, prev_result)
     await commit_match(db, m)
 
 
@@ -500,15 +519,16 @@ class CorrectIn(BaseModel):
     reason: str = Field(min_length=3)
 
 
-async def _guard_and_recompute(db: AsyncSession, m: Match, rules: RuleConfig) -> None:
+async def _guard_and_recompute(db: AsyncSession, m: Match, rules: RuleConfig) -> Recomputed | None:
     """Recompute, refusing a change that would reopen innings 1 after innings 2 began."""
     inns = await get_innings(db, m.id)
     was_finished = inns[0].status == "completed"
     b2, _ = await engine_inputs(db, inns[1])
-    await recompute(db, m, rules)
+    rec = await recompute(db, m, rules)
     if was_finished and inns[0].status != "completed" and b2:
         await db.rollback()
         raise HTTPException(409, "This change would reopen innings 1 after innings 2 started")
+    return rec
 
 
 @router.post("/matches/{match_id}/balls/correct", status_code=201)
@@ -536,6 +556,11 @@ async def correct_ball(match_id: int, body: CorrectIn, user: User = Depends(get_
           {"batter": latest.batter_digit, "bowler": latest.bowler_digit, "runs": latest.runs},
           {"batter": ev.batter_digit, "bowler": ev.bowler_digit, "runs": ev.runs})
     await db.flush()
-    await _guard_and_recompute(db, m, rules)
+    prev_status, prev_result = m.status, m.result_text
+    rec = await _guard_and_recompute(db, m, rules)
+    await events.ball_corrected(db, m, body.innings_number, body.over_no, body.ball_no,
+                                {"runs": latest.runs, "wicket": latest.is_wicket}, {"runs": ev.runs, "wicket": ev.is_wicket},
+                                user.name, body.reason)
+    await events.status_changed(db, m, rec, prev_status, prev_result)
     await commit_match(db, m)
     return {"revision": ev.revision, "match_status": m.status, "result": m.result_text}

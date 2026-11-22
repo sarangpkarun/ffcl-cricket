@@ -16,9 +16,11 @@ from app.db.models import (
     ChatMute,
     ChatRead,
     ChatRoom,
+    Innings,
     Match,
     MatchPlayer,
     MessageReaction,
+    Over,
     Season,
     Team,
     TeamMember,
@@ -89,6 +91,27 @@ async def active_mute(db: AsyncSession, season_id: int | None, user_id: int) -> 
     )
 
 
+async def active_over(db: AsyncSession, match_id: int) -> Over | None:
+    return await db.scalar(
+        select(Over).join(Innings, Innings.id == Over.innings_id)
+        .where(Innings.match_id == match_id, Innings.status == "active")
+        .order_by(Over.number.desc()).limit(1))
+
+
+async def submission_lock(db: AsyncSession, room: ChatRoom, user: User) -> str | None:
+    """While an over's submissions are open, its batter and bowler cannot use the match chat.
+
+    That keeps digits (and hints about them) out of the room, and stops the two from
+    coordinating. Everyone else, including the umpire, chats normally.
+    """
+    if room.kind != "match" or not room.match_id:
+        return None
+    over = await active_over(db, room.match_id)
+    if over and over.state == "submissions_open" and user.id in (over.bowler_id, over.batter_id):
+        return "Chat is paused for you while you submit this over's digits. It reopens when submissions close."
+    return None
+
+
 async def post_block_reason(db: AsyncSession, room: ChatRoom, user: User) -> str | None:
     """None if the user may post; otherwise a message explaining why not."""
     if not await can_read(db, room, user):
@@ -96,7 +119,9 @@ async def post_block_reason(db: AsyncSession, room: ChatRoom, user: User) -> str
     mute = await active_mute(db, room.season_id, user.id)
     if mute:
         return f"You are muted until {mute.until.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
-    # Sprint 7 adds the batter/bowler lock while an over's submissions are open.
+    lock = await submission_lock(db, room, user)
+    if lock:
+        return lock
     return None
 
 

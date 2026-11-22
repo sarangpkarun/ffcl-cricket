@@ -19,6 +19,8 @@ from app.db.session import get_session
 from app.deps import get_current_user
 from app.realtime import publish_room
 from app.services import chat as svc
+from app.services.notify import notify
+from app.services.outbox import flush as flush_outbox
 from app.services.presence import online_users
 from app.services.ratelimit import allow
 
@@ -146,6 +148,22 @@ async def _validated_extras(db: AsyncSession, room: ChatRoom, user: User, body: 
     return extra
 
 
+def _room_link(room: ChatRoom) -> str:
+    return "/chat" if room.kind == "season" else f"/matches/{room.match_id}"
+
+
+async def _notify_message(db: AsyncSession, room: ChatRoom, sender: User, msg: ChatMessage, body: SendIn) -> None:
+    """Tell mentioned people, and the author of the message being replied to (once)."""
+    data = {"room_id": room.id, "message_id": msg.id, "link": _room_link(room)}
+    snippet = (msg.body or "")[:140]
+    mentioned = set(body.mentions) - {sender.id}
+    await notify(db, mentioned, "mention", f"{sender.name} mentioned you", snippet, data, f"msg:{msg.id}")
+    if msg.reply_to_id:
+        target = await db.get(ChatMessage, msg.reply_to_id)
+        if target and target.sender_id and target.sender_id not in mentioned | {sender.id}:
+            await notify(db, {target.sender_id}, "reply", f"{sender.name} replied to you", snippet, data, f"msg:{msg.id}")
+
+
 @router.post("/rooms/{room_id}/messages", status_code=201)
 async def send_message(room_id: int, body: SendIn, user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_session)) -> dict:
@@ -165,6 +183,8 @@ async def send_message(room_id: int, body: SendIn, user: User = Depends(get_curr
                       **({"kind": "user"} | extra))
     db.add(msg)
     try:
+        await db.flush()
+        await _notify_message(db, room, user, msg, body)
         await db.commit()
     except IntegrityError:  # two identical retries raced; return the winner
         await db.rollback()
@@ -176,6 +196,7 @@ async def send_message(room_id: int, body: SendIn, user: User = Depends(get_curr
         raise
     out = (await svc.messages_out(db, [msg]))[0]
     await publish_room(room.id, {"type": "message", "message": out})
+    await flush_outbox(db)
     return out
 
 
@@ -184,6 +205,9 @@ async def edit_message(room_id: int, message_id: int, body: EditIn,
                        user: User = Depends(get_current_user),
                        db: AsyncSession = Depends(get_session)) -> dict:
     room = await svc.require_read(db, room_id, user)
+    blocked = await svc.post_block_reason(db, room, user)
+    if blocked:
+        raise HTTPException(403, blocked)
     msg = await _message(db, room, message_id)
     if msg.sender_id != user.id or msg.kind != "user":
         raise HTTPException(403, "You can only edit your own messages")
@@ -307,9 +331,14 @@ async def announce(room_id: int, body: AnnounceIn, user: User = Depends(get_curr
     msg = ChatMessage(room_id=room.id, sender_id=user.id, kind="announcement", body=body.body,
                       pinned_at=datetime.now(UTC), pinned_by=user.id)
     db.add(msg)
+    await db.flush()
+    audience = await svc.member_ids(db, room) - {user.id}
+    await notify(db, audience, "announcement", "📢 Announcement", body.body[:140],
+                 {"room_id": room.id, "message_id": msg.id, "link": _room_link(room)}, f"ann:{msg.id}")
     await db.commit()
     out = (await svc.messages_out(db, [msg]))[0]
     await publish_room(room.id, {"type": "message", "message": out})
+    await flush_outbox(db)
     return out
 
 

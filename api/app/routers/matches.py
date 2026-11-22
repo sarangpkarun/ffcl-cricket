@@ -9,7 +9,9 @@ from app.engine.rules import DEFAULT_RULES
 from app.realtime import publish_change
 from app.routers.teams import can_manage
 from app.schemas import LineupIn, MatchDetail, MatchIn, MatchOut, MatchPatch
+from app.services import match_events
 from app.services.chat import ensure_match_rooms
+from app.services.outbox import flush as flush_outbox
 
 router = APIRouter(tags=["matches"])
 
@@ -70,7 +72,10 @@ async def create_match(
     db.add(match)
     await db.flush()
     await ensure_match_rooms(db, match)
+    if match.umpire_id:
+        await match_events.umpire_assigned(db, match, match.umpire_id)
     await db.commit()
+    await flush_outbox(db)
     return match
 
 
@@ -109,11 +114,15 @@ async def update_match(
     data = body.model_dump(exclude_unset=True)
     if "umpire_id" in data:
         await _check_umpire(db, data["umpire_id"], m.team_a_id, m.team_b_id)
+    previous_umpire = m.umpire_id
     for k, v in data.items():
         setattr(m, k, v)
     m.seq += 1
+    if data.get("umpire_id") and data["umpire_id"] != previous_umpire:
+        await match_events.umpire_assigned(db, m, data["umpire_id"])
     await db.commit()
     await publish_change(m.id, m.seq)
+    await flush_outbox(db)
     return m
 
 

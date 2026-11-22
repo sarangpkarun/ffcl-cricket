@@ -322,3 +322,29 @@ class ChatMute(Base):
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = _now()
     lifted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        UniqueConstraint("user_id", "kind", "dedupe_key"),  # a retried job never notifies twice
+        Index("ix_notifications_user_id_id", "user_id", "id"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    kind: Mapped[str] = mapped_column(String(24))
+    title: Mapped[str] = mapped_column(String(160))
+    body: Mapped[str | None] = mapped_column(Text)
+    data: Mapped[dict | None] = mapped_column(JSON)
+    dedupe_key: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = _now()
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NotificationPref(Base):
+    __tablename__ = "notification_prefs"
+    __table_args__ = (UniqueConstraint("user_id", "kind"),)
+    id: Mapped[int] = _pk()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    kind: Mapped[str] = mapped_column(String(24))
+    in_app: Mapped[bool] = mapped_column(Boolean)
