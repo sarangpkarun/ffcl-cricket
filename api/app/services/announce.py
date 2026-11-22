@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import ChatMessage, ChatRoom, Match, MatchPlayer, Team, User
+from app.db.models import ChatMessage, ChatRoom, Match, MatchPlayer, Season, Team, User
 from app.services import chat as svc
 from app.services.outbox import queue_message
 
@@ -53,3 +53,13 @@ async def match_audience(db: AsyncSession, match: Match) -> set[int]:
     if match.umpire_id:
         ids.add(match.umpire_id)
     return ids
+
+
+async def say_season(db: AsyncSession, season: Season, text: str) -> ChatMessage:
+    """Post a system message in the season-wide chat."""
+    room = await svc.ensure_season_room(db, season)
+    msg = ChatMessage(room_id=room.id, sender_id=None, kind="system", body=text)
+    db.add(msg)
+    await db.flush()
+    queue_message(db, msg)
+    return msg

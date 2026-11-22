@@ -55,7 +55,7 @@ Defaults I chose (tell me if any are wrong; each is a setting):
 - UI: **Fixtures** page (Upcoming / Live / Completed, team filter, status badges) and an admin **Season setup** wizard (teams, stages, generate, review, publish).
 - **Exit:** an admin generates a full round robin for 6 teams, adjusts it and publishes; players see only published matches.
 
-### Sprint 10: Results ledger, points table, knockouts (week 2)
+### Sprint 10: Results ledger, points table, knockouts (week 2) ✅ done
 - Migration 0007; `finish_match()` hooked into `recompute()` so every completion, correction and withdrawn result updates the ledger.
 - `engine/standings.py`: points, net run rate, tie-breaks (including head-to-head among the tied group), point adjustments.
 - Knockouts: generate semi-finals from the top four (1v4, 2v3), the final is created automatically when both semis finish (idempotent), tie rule applied, season champion recorded.
@@ -132,3 +132,16 @@ Deliberate limits:
 - The admin umpire choices list the first 100 umpires (search comes with the People screen); generation itself uses all of them.
 - Knockout stages arrive in Sprint 10; this sprint generates the league stage only.
 - Time zone is entered as text (defaults to the browser's); there is no per-league setting yet.
+
+## Sprint 10 outcome
+Built:
+- **Results ledger** (`match_results`, migration 0007): one row per finished match with both sides' runs, balls faced and all-out flags. It is written by `sync_ledger()` inside `recompute()`, so every completion, correction, penalty, voided penalty and withdrawn result rewrites it in the same transaction (a withdrawn result removes the row). Existing completed matches were backfilled with the new `POST /admin/results/rebuild` tool (207 matches in the dev database), which is also the repair tool.
+- **Standings engine** (`engine/standings.py`, pure): points, played/won/lost/tied, form guide, point adjustments, and net run rate using exact fractions (an all-out innings counts as the full 7 overs; walkovers, abandonments and no-results never touch it). Tie-breaks follow the rule set's order, default **points, net run rate, wins, head-to-head, name**: head-to-head is a mini-league among the teams still level and is re-run on whoever remains level; the order is always total and independent of the order results arrive. 23 engine tests, including hand-calculated net run rates and properties (every match hands out exactly two points, results order does not matter).
+- **Knockouts** (`engine/knockout.py`, `services/results.py`): `POST /seasons/{id}/knockouts/generate` seeds the top four 1 v 4 and 2 v 3 (or the top two straight into a final), published at once with umpires who are not playing, and refuses until the league is finished unless the admin overrides. The **final is created automatically** when both semi-finals finish, exactly once, dated the day after the last semi. If a correction changes a semi-final before the final starts, the final's teams are updated (lineups cleared, people notified, audited); if a semi result is withdrawn the final goes on hold and returns when the semi is decided again; once the final has started such a correction is refused (HTTP 409) and nothing changes. A tied knockout is won by the higher league seed, and is still recorded honestly as a tie. Winning the final records the **season champion** (announced in the season chat and to the winners; a correction can change it).
+- **Table and bracket API and screens**: `GET /seasons/{id}/standings` and `/bracket`; a **Table** page (position, played, won, lost, tied, points, net run rate, form chips, qualifying places marked, the tie-break order spelled out, champion banner, knockout bracket) and a knockouts section on the admin setup page. "Table" is now a tab in the bottom navigation.
+
+Decisions and notes:
+- Which matches count: the league stage and hand-made matches without a stage. Knockout matches never affect the league table.
+- Point adjustments are read by the table now (voided ones ignored); the screens to create them come in Sprint 11. Walkover and abandonment points are already in the engine and the rule set; Sprint 11 writes the ledger rows.
+- The test database is now reset with `DROP SCHEMA` instead of per-table drops, because the champion link makes seasons and teams reference each other.
+- Only two or four qualifiers are supported; anything else is refused.

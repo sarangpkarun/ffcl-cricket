@@ -104,3 +104,52 @@ export async function seedLeague() {
   const adminUser: U = { email: adminEmail, token: admin, id: 0, name: "League Admin" };
   return { admin, adminUser, season: season.id, teams, umpires };
 }
+
+type LeagueSeed = Awaited<ReturnType<typeof seedLeague>>;
+type TeamSeed = LeagueSeed["teams"][number];
+
+export async function newMatch(lg: LeagueSeed, a: TeamSeed, b: TeamSeed): Promise<number> {
+  const m = await call<{ id: number }>(`/seasons/${lg.season}/matches`, "POST", { team_a_id: a.id, team_b_id: b.id, umpire_id: lg.umpires[0].id }, lg.admin);
+  return m.id;
+}
+
+/**
+ * Play an existing match to the end with the admin as the official. Team A wins the toss and bats first.
+ *   a   : A scores 21 then is all out, B is all out for 0 -> A wins by 21 runs
+ *   b   : A is all out for 0, B scores 5 off one ball      -> B wins
+ *   tie : both all out for 0
+ */
+export async function playMatch(lg: LeagueSeed, matchId: number, a: TeamSeed, b: TeamSeed, outcome: "a" | "b" | "tie") {
+  const t = lg.admin;
+  const m = `/matches/${matchId}`;
+  const post = (path: string, body?: unknown, token = t) => call(`${m}/${path}`, "POST", body, token);
+  for (const team of [a, b]) await call(`${m}/lineup`, "PUT", { team_id: team.id, user_ids: team.players.map((p) => p.id) }, t);
+  await post("toss/open");
+  await post("toss/winner", { winner_team_id: a.id });
+  await post("toss/decision", { decision: "bat" }, a.players[0].token);
+  await post("toss/confirm");
+  await post("start");
+  const BAT = "561234", NO_EQUAL = "652143", ALL_EQUAL = "561234";
+  const over = async (n: number, batting: TeamSeed, bowling: TeamSeed, bowlDigits: string) => {
+    const bowler = bowling.players[(n - 1) % 3];
+    const batter = batting.players[(n - 1) % 3];
+    await post("overs/start", { bowler_id: bowler.id, batter_id: batter.id });
+    await post("overs/current/signal");
+    await post("overs/current/submit", { digits: bowlDigits }, bowler.token);
+    await post("overs/current/submit", { digits: BAT }, batter.token);
+    await post("overs/current/lock");
+    await post("overs/current/reveal");
+    await post("overs/current/resolve");
+  };
+  if (outcome === "a") {
+    await over(1, a, b, NO_EQUAL); await over(2, a, b, ALL_EQUAL); await over(3, a, b, ALL_EQUAL);
+  } else {
+    await over(1, a, b, ALL_EQUAL); await over(2, a, b, ALL_EQUAL);
+  }
+  await post("innings/next");
+  if (outcome === "b") {
+    await over(1, b, a, NO_EQUAL);
+  } else {
+    await over(1, b, a, ALL_EQUAL); await over(2, b, a, ALL_EQUAL);
+  }
+}

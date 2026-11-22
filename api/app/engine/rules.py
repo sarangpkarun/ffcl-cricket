@@ -18,6 +18,10 @@ DEFAULT_RULES: dict[str, Any] = {
     "same_digit_bowler_credit": True,
     "submission_flow": "private_then_reveal",
     "submission_seconds": 180,
+    # League table (see engine/standings.py) and knockouts (engine/knockout.py)
+    "points": {"win": 2, "tie": 1, "loss": 0, "walkover_win": 2, "walkover_loss": 0, "no_result": 1, "abandoned": 1},
+    "tiebreakers": ["points", "nrr", "wins", "head_to_head", "name"],
+    "knockout": {"qualifiers": 4, "tie": "higher_seed"},
 }
 
 NORMAL, BOWLING_PP, BATTING_PP = "normal", "bowling_pp", "batting_pp"

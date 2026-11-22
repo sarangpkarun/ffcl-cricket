@@ -96,6 +96,11 @@ async def delete_draft_match(db: AsyncSession, match: Match) -> None:
     """Remove a never-published match and everything hung off it. Published matches are kept forever."""
     if match.published_at is not None or match.status != "scheduled":
         raise HTTPException(409, "Only unpublished matches can be deleted; abandon a published match instead")
+    await remove_match(db, match)
+
+
+async def remove_match(db: AsyncSession, match: Match) -> None:
+    """Internal: delete a match that has not started, with its chat rooms, lineup and toss."""
     room_ids = list(await db.scalars(select(ChatRoom.id).where(ChatRoom.match_id == match.id)))
     if room_ids:
         await db.execute(delete(ChatMessage).where(ChatMessage.room_id.in_(room_ids)))

@@ -229,3 +229,31 @@ export type Fixture = {
   winner_team_id: number | null;
 };
 export class ClashError extends Error {}
+
+export type TableRow = {
+  position: number;
+  team: { id: number; name: string; color: string | null };
+  qualified: boolean;
+  played: number; won: number; lost: number; tied: number; no_result: number;
+  points: number; match_points: number; adjustments: number; nrr: number;
+  form: string[];
+};
+export type Standings = {
+  season: { id: number; name: string; status: string; champion: { id: number; name: string } | null };
+  rows: TableRow[];
+  qualifiers: number;
+  points: Record<string, number>;
+  tiebreakers: string[];
+  matches_counted: number;
+  league_complete: boolean;
+  pending_matches: number[];
+};
+export type BracketMatch = {
+  id: number; match_no: number; round_label: string; status: string; scheduled_at: string | null;
+  team_a: FixtureTeam; team_b: FixtureTeam; result: string | null; winner_team_id: number | null;
+};
+export type Bracket = {
+  stage: { id: number; name: string; qualifiers: number; seeds: { seed: number; team: FixtureTeam }[] } | null;
+  matches: BracketMatch[];
+  champion: { id: number; name: string } | null;
+};

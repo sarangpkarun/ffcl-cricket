@@ -112,3 +112,54 @@ async def make_league(make_user, n_teams=4, per_team=2, n_umpires=3, name="Leagu
         await admin.req("PATCH", f"/teams/{tid}", json={"captain_id": players[tid][0].id})
     umpires = [await make_user("Ump", roles=["umpire"]) for _ in range(n_umpires)]
     return League(admin, teams, players, umpires, sid)
+
+
+async def play_match(lg: League, match_id: int, outcome: str, official=None) -> Ctx:
+    """Play an existing match to the end through the API, quickly, with the admin as the official.
+
+    Team A wins the toss and bats first. Outcomes (A = the match's first team, B = the second):
+      "a"   A scores 21 then is all out; B is all out for 0          -> A wins by 21 runs
+      "b"   A is all out for 0; B scores 5 off the first ball        -> B wins by 7 wickets (chase over in one ball)
+      "tie" both sides are all out for 0                              -> tied
+    """
+    official = official or lg.admin
+    m = (await lg.admin.req("GET", f"/matches/{match_id}")).json()
+    ta, tb = m["team_a_id"], m["team_b_id"]
+    ctx = Ctx(lg.admin, official, lg.players[ta], lg.players[tb], ta, tb, match_id, lg.sid)
+    for tid, pl in ((ta, lg.players[ta]), (tb, lg.players[tb])):
+        if not any(p["team_id"] == tid for p in m["lineup"]):
+            r = await lg.admin.req("PUT", f"/matches/{match_id}/lineup", json={"team_id": tid, "user_ids": [p.id for p in pl]})
+            assert r.status_code == 200, r.text
+    batters, bowlers = await run_toss(ctx, "a", "bat")
+    await start(ctx)
+    if outcome == "a":
+        await play(ctx, batters, bowlers, 1)
+        await play(ctx, batters, bowlers, 2, bowl_digits=BOWL_ALL_EQUAL)
+        await play(ctx, batters, bowlers, 3, bowl_digits=BOWL_ALL_EQUAL)
+    else:
+        await play(ctx, batters, bowlers, 1, bowl_digits=BOWL_ALL_EQUAL)
+        await play(ctx, batters, bowlers, 2, bowl_digits=BOWL_ALL_EQUAL)
+    await official.req("POST", f"{ctx.url}/innings/next")
+    if outcome == "b":
+        await play(ctx, bowlers, batters, 1)
+    else:
+        await play(ctx, bowlers, batters, 1, bowl_digits=BOWL_ALL_EQUAL)
+        await play(ctx, bowlers, batters, 2, bowl_digits=BOWL_ALL_EQUAL)
+    return ctx
+
+
+async def new_match(lg: League, ta: int, tb: int, umpire=None) -> int:
+    ump = umpire or lg.umpires[0]
+    r = await lg.admin.req("POST", f"/seasons/{lg.sid}/matches", json={"team_a_id": ta, "team_b_id": tb, "umpire_id": ump.id})
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+async def play_league(lg: League, results: list[tuple[int, int, str]]) -> list[int]:
+    """Create and play several matches: (team A, team B, outcome) each. Returns the match ids."""
+    ids = []
+    for ta, tb, outcome in results:
+        mid = await new_match(lg, ta, tb)
+        await play_match(lg, mid, outcome)
+        ids.append(mid)
+    return ids

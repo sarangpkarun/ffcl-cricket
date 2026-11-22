@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { btnCls, btnGhost, ErrorText, Field, inputCls, RequireAuth } from "@/components/ui-bits";
-import { api, del, patch, post, type Fixture, type Season, type Team } from "@/lib/api";
+import { api, del, patch, post, type Bracket, type Fixture, type Season, type Standings, type Team } from "@/lib/api";
 
 type PreviewRow = {
   index: number; round_no: number; team_a: string; team_b: string; scheduled_at: string;
@@ -86,6 +86,9 @@ function Setup() {
   const [result, setResult] = useState<Published | null>(null);
   const [created, setCreated] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [standings, setStandings] = useState<Standings | null>(null);
+  const [bracket, setBracket] = useState<Bracket | null>(null);
+  const [ko, setKo] = useState({ first: "", second: "", incomplete: false });
 
   const reload = useCallback(async () => {
     try {
@@ -94,6 +97,8 @@ function Setup() {
       const all = await api<Fixture[]>(`/seasons/${id}/fixtures?include_drafts=true`);
       setDrafts(all.filter((f) => !f.published).sort((a, b) => a.match_no - b.match_no));
       setUmpires((await api<{ users: Umpire[] }>("/admin/users?role=umpire&limit=100")).users);
+      setStandings(await api<Standings>(`/seasons/${id}/standings`));
+      setBracket(await api<Bracket>(`/seasons/${id}/bracket`));
     } catch (e) { setErr((e as Error).message); }
   }, [id]);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount
@@ -196,6 +201,33 @@ function Setup() {
               <button className={`${btnCls} flex-1`} onClick={() => run(async () => { setResult(await post<Published>(`/seasons/${id}/fixtures/publish`, {})); setConfirming(false); await reload(); })}>Yes, publish and notify everyone</button>
               <button className={btnGhost} onClick={() => setConfirming(false)}>Cancel</button>
             </div>
+          )}
+        </section>
+      )}
+      {standings && standings.matches_counted > 0 && (
+        <section className="space-y-3 rounded-lg border p-3" aria-label="Knockouts setup">
+          <h2 className="font-medium">5. Knockouts</h2>
+          {bracket?.stage ? (
+            <p role="status" className="text-sm">Knockouts are set: {bracket.matches.map((m) => `${m.round_label} ${m.team_a.name} v ${m.team_b.name}`).join(" · ")}. The final is created automatically when the semi-finals finish. <Link href="/standings" className="underline">See the bracket</Link></p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {standings.league_complete ? `The league is finished. The top ${standings.qualifiers} go through (1 v 4, 2 v 3).` : `${standings.pending_matches.length} league match(es) are still to be played.`}
+              </p>
+              <Field label="First semi-final" type="datetime-local" value={ko.first} onChange={(e) => setKo({ ...ko, first: e.target.value })} />
+              <Field label="Second semi-final (blank = same time)" type="datetime-local" value={ko.second} onChange={(e) => setKo({ ...ko, second: e.target.value })} />
+              {!standings.league_complete && (
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ko.incomplete} onChange={(e) => setKo({ ...ko, incomplete: e.target.checked })} /> Start the knockouts anyway</label>
+              )}
+              <button className={btnCls} disabled={!ko.first} onClick={() => run(async () => {
+                await post(`/seasons/${id}/knockouts/generate`, {
+                  first_at: new Date(ko.first).toISOString(),
+                  second_at: ko.second ? new Date(ko.second).toISOString() : null,
+                  allow_incomplete: ko.incomplete,
+                });
+                await reload();
+              })}>Create the knockouts</button>
+            </>
           )}
         </section>
       )}

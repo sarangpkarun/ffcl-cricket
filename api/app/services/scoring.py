@@ -9,9 +9,10 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BallEvent, Innings, Match, Penalty, RuleSet, Team
+from app.db.models import BallEvent, Innings, Match, Penalty, RuleSet, Stage, Team
 from app.engine import Ball, InningsSummary, RuleConfig, decide_match, summarize_innings
 from app.engine import Penalty as EPenalty
+from app.engine.knockout import resolve_tie
 
 
 async def load_rules(db: AsyncSession, match: Match) -> RuleConfig:
@@ -49,7 +50,16 @@ class Recomputed:
 
 
 async def recompute(db: AsyncSession, match: Match, rules: RuleConfig) -> Recomputed | None:
-    """Re-derive innings status, target and match result. Caller commits."""
+    """Re-derive innings status, target and match result, then keep the results ledger (and any
+    knockout that depends on it) in step. Caller commits."""
+    from app.services import results  # imported here: results needs get_innings from this module
+
+    rec = await _derive(db, match, rules)
+    await results.sync_ledger(db, match, rec)
+    return rec
+
+
+async def _derive(db: AsyncSession, match: Match, rules: RuleConfig) -> Recomputed | None:
     inns = await get_innings(db, match.id)
     if len(inns) < 2:
         return None
@@ -77,6 +87,13 @@ async def recompute(db: AsyncSession, match: Match, rules: RuleConfig) -> Recomp
         elif res.winner == "second":
             winner_id = i2.batting_team_id
         text = res.text if winner_id is None else f"{names[winner_id]} {res.text}"
+        stage = await db.get(Stage, match.stage_id) if match.stage_id else None
+        if winner_id is None and stage is not None and stage.kind == "knockout":
+            # a knockout cannot end level: the team that finished higher in the league goes through
+            winner_id = resolve_tie(match.team_a_id, match.team_b_id, stage.config.get("seeds", []))
+            if winner_id not in names:
+                names[winner_id] = (await db.get(Team, winner_id)).name  # type: ignore[union-attr]
+            text = f"Match tied. {names[winner_id]} go through as the higher league seed"
         match.status, match.winner_team_id, match.result_text = "completed", winner_id, text
     elif match.status == "completed":
         match.status, match.winner_team_id, match.result_text = "innings2", None, None

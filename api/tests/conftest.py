@@ -42,7 +42,10 @@ async def engine():
     await admin.dispose()
     eng = create_async_engine(TEST_URL, poolclass=NullPool)
     async with eng.begin() as c:
-        await c.run_sync(Base.metadata.drop_all)
+        # Reset the whole schema rather than drop_all: tables may linger from an older schema, and
+        # circular foreign keys (seasons <-> teams) make table-by-table dropping fragile.
+        await c.execute(text("DROP SCHEMA public CASCADE"))
+        await c.execute(text("CREATE SCHEMA public"))
         await c.run_sync(Base.metadata.create_all)
     async with async_sessionmaker(eng, expire_on_commit=False)() as s:
         s.add(RuleSet(name="FFCL", version=1, config=DEFAULT_RULES))

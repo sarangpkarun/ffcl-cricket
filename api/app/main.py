@@ -19,6 +19,7 @@ from app.routers import (
     notifications,
     play,
     seasons,
+    standings,
     teams,
     users,
     ws,
@@ -41,7 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation,
-          notifications, ws_me, admin_users, fixtures):
+          notifications, ws_me, admin_users, fixtures, standings):
     app.include_router(r.router)
 
 

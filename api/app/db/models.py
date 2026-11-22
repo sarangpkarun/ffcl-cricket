@@ -90,6 +90,7 @@ class Season(Base):
     starts_on: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ends_on: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rule_set_id: Mapped[int | None] = mapped_column(ForeignKey("rule_sets.id"))
+    champion_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
 
 
 class Team(Base):
@@ -364,3 +365,35 @@ class NotificationPref(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     kind: Mapped[str] = mapped_column(String(24))
     in_app: Mapped[bool] = mapped_column(Boolean)
+
+
+class MatchResult(Base):
+    """The one record the points table reads. Rewritten whenever a result is corrected."""
+
+    __tablename__ = "match_results"
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), unique=True)
+    result_type: Mapped[str] = mapped_column(String(12))  # normal|tie|walkover|abandoned|no_result
+    winner_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
+    # Figures are keyed by the match's own team A and team B. Null for walkovers and abandonments.
+    a_runs: Mapped[int | None] = mapped_column(Integer)
+    a_balls: Mapped[int | None] = mapped_column(Integer)  # balls team A faced
+    a_all_out: Mapped[bool] = mapped_column(Boolean, default=False)
+    b_runs: Mapped[int | None] = mapped_column(Integer)
+    b_balls: Mapped[int | None] = mapped_column(Integer)
+    b_all_out: Mapped[bool] = mapped_column(Boolean, default=False)
+    decided_at: Mapped[datetime] = _now()
+
+
+class PointAdjustment(Base):
+    __tablename__ = "point_adjustments"
+    id: Mapped[int] = _pk()
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), index=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"))
+    points: Mapped[int] = mapped_column(Integer)  # may be negative
+    kind: Mapped[str] = mapped_column(String(16))  # umpire_duty|conduct|manual
+    reason: Mapped[str] = mapped_column(Text)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _now()
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
