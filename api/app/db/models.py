@@ -270,3 +270,55 @@ class ChatMessage(Base):
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reply_to_id: Mapped[int | None] = mapped_column(ForeignKey("chat_messages.id"))
+    pinned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pinned_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+
+class MessageReaction(Base):
+    __tablename__ = "message_reactions"
+    __table_args__ = (UniqueConstraint("message_id", "user_id", "emoji"),)
+    id: Mapped[int] = _pk()
+    message_id: Mapped[int] = mapped_column(ForeignKey("chat_messages.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    emoji: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = _now()
+
+
+class ChatRead(Base):
+    """Read receipt as a cursor: the newest message id this user has seen in the room."""
+
+    __tablename__ = "chat_reads"
+    __table_args__ = (UniqueConstraint("room_id", "user_id"),)
+    id: Mapped[int] = _pk()
+    room_id: Mapped[int] = mapped_column(ForeignKey("chat_rooms.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    last_read_id: Mapped[int] = mapped_column(BigInteger, default=0)
+    updated_at: Mapped[datetime] = _now()
+
+
+class MessageReport(Base):
+    __tablename__ = "message_reports"
+    __table_args__ = (UniqueConstraint("message_id", "reporter_id"),)
+    id: Mapped[int] = _pk()
+    message_id: Mapped[int] = mapped_column(ForeignKey("chat_messages.id"), index=True)
+    reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(12), default="open")  # open|actioned|dismissed
+    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _now()
+
+
+class ChatMute(Base):
+    """Blocks posting (not reading) in every room of a season until `until` or `lifted_at`."""
+
+    __tablename__ = "chat_mutes"
+    id: Mapped[int] = _pk()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"))
+    until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str] = mapped_column(Text)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _now()
+    lifted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

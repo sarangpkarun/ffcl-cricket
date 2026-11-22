@@ -18,7 +18,7 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 | System message volume | One line per wicket, one per six, one summary per over (includes fours). |
 | Edit / delete | Edit own message within 15 min (shows "edited"). Delete own any time. Admins/umpires can delete anything (soft delete, "message removed"). |
 | Mentions | Picked from a member list (`@name`), sent as explicit user ids. Names are not unique, so no text parsing. |
-| Images | JPEG/PNG/WebP/GIF, max 5 MB, stored in MinIO (S3 in production). Stickers are a built-in set. |
+| Images and stickers | **Dropped** (owner decision during Sprint 6). Chat is text, reactions and mentions only. |
 | Notifications | In-app now. Browser push and email are Phase 4. |
 | Pulled forward from Phase 3 | Admin user-management screen (grant roles, suspend). Phone-change approval stays in Phase 3. |
 | Needs your rulebook answer | Toss timeout default when a captain is absent (never built). |
@@ -31,7 +31,7 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 - **System messages are written in the same transaction as the state change** (toss confirmed, over resolved, penalty, result) and published after commit. Extend `commit_match()` with an outbox list on the session so a message exists if and only if the state change committed.
 - **Ordering and history:** messages ordered by a bigint id; history is cursor-paginated (`before=<id>`). Reconnect refetches everything after the last seen id.
 - **Presence and typing:** Redis keys with TTL (heartbeat every 20 s); typing events throttled to one per 2 s per user.
-- **Safety:** per-user rate limit (10 messages / 10 s / room, Redis token bucket), body ≤ 2000 chars, plain text only (React escapes; no HTML/markdown rendering), image MIME sniffed server-side, uploads only through our presigned flow.
+- **Safety:** per-user rate limit (10 messages / 10 s / room, Redis token bucket), body ≤ 2000 chars, plain text only (React escapes; no HTML/markdown rendering), no file uploads.
 
 ## Data model (0003 rooms + messages, shipped in Sprint 5; Sprint 6 adds reactions, reads, reports, mutes, reply/pin/image columns; Sprint 7 adds notifications)
 - `chat_rooms(id, kind season|match|umpire, season_id, match_id, scope_key unique)`: created automatically with the season, and with each match (match + umpire rooms).
@@ -53,9 +53,8 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 - UI: **Chat** tab in the bottom nav (season room), **Score | Chat** tabs on the match page, message list with load-older, composer fixed above the nav (mobile safe-area).
 - **Exit:** two players chat live in the season room and the match room; non-members are refused on REST and socket.
 
-### Sprint 6: Rich chat and moderation (week 2)
+### Sprint 6: Rich chat and moderation (week 2) ✅ done
 - Replies/quotes, reactions (small emoji set, toggle), @mentions (picker, notifies mentioned users), pinned messages, admin announcements (pinned banner), typing indicator, read receipts, message search (Postgres full-text, scoped to rooms the user can read).
-- Images and stickers: MinIO service in `docker-compose.yml`, presigned upload endpoint with size/type checks, built-in sticker set.
 - Reports: any member reports a message; admin queue.
 - Moderation: admin/umpire delete, mute a user (time-limited) per season; mute blocks posting but not reading.
 - UI: `/admin/moderation` (reports, mutes, announcement composer).
@@ -75,7 +74,7 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 - **Exit:** Phase 2 definition of done below.
 
 ## Edge cases to test
-Duplicate send (same `client_id`); message sent while the match state changes; socket reconnect mid-conversation (no gaps, no duplicates); removed or suspended user keeps an open socket (disconnect them); non-member joins a room by guessing the id; batter chatting during submission; editing after 15 min; deleting someone else's message; mention of a non-member; reacting twice; search leaking an inaccessible room's messages; image with a fake extension; very long or empty message; flood (rate limit); system message ordering versus the scoreboard update; two admins muting the same user; notification dedupe after worker retry.
+Duplicate send (same `client_id`); message sent while the match state changes; socket reconnect mid-conversation (no gaps, no duplicates); removed or suspended user keeps an open socket (disconnect them); non-member joins a room by guessing the id; batter chatting during submission; editing after 15 min; deleting someone else's message; mention of a non-member; reacting twice; search leaking an inaccessible room's messages; very long or empty message; flood (rate limit); system message ordering versus the scoreboard update; two admins muting the same user; notification dedupe after worker retry.
 
 ## Risks
 | Risk | Mitigation |
@@ -84,12 +83,12 @@ Duplicate send (same `client_id`); message sent while the match state changes; s
 | Chat and state drifting apart | System messages written in the same transaction as the state change |
 | Fan-out load | Redis channel per room, messages small, loadtest with 200 chat users |
 | Abuse or inappropriate content | Reports, soft delete, mutes, rate limits; automated image scanning deferred (note) |
-| XSS / unsafe uploads | Plain-text rendering, MIME sniffing, size limit, presigned uploads only |
+| XSS | Plain-text rendering only; no uploads (images were dropped) |
 | One access matrix scattered across endpoints | A single `can_read/can_post` service plus a role-by-room test matrix |
 
 ## Critical files
-- New: `api/app/routers/chat.py`, `notifications.py`, `ws_rooms.py`; `api/app/services/chat.py`, `notify.py`, `storage.py`; `api/app/worker.py`; migrations 0003, 0004.
-- Modified: `api/app/db/models.py`, `api/app/routers/play.py` (system message hooks, outbox in `commit_match`), `seasons.py`, `matches.py`, `api/app/main.py`, `docker-compose.yml` (minio, worker).
+- New: `api/app/routers/chat.py`, `notifications.py`, `ws_rooms.py`; `api/app/services/chat.py`, `notify.py`; `api/app/worker.py`; migrations 0003, 0004.
+- Modified: `api/app/db/models.py`, `api/app/routers/play.py` (system message hooks, outbox in `commit_match`), `seasons.py`, `matches.py`, `api/app/main.py`, `docker-compose.yml` (worker).
 - Web: `app/chat/page.tsx`, `components/chat/*` (MessageList, Composer, MessageItem, PinnedBar, OnlineList, Search, ReportDialog), `lib/useRoom.ts`, `components/NotificationBell.tsx`, `app/notifications/page.tsx`, `app/admin/moderation`, `app/admin/users`, match page tabs, `BottomNav.tsx` (add Chat).
 - Reuse: `realtime.client()`, first-message socket auth from `ws.py::_authenticate`, `commit_match`, `ensure_official`/`can_manage`/`is_admin`, `tests/helpers.py::setup_match`, `conftest.py::make_user`, `loadtest/simulate.py`, `lib/useLive.ts` patterns.
 
@@ -114,3 +113,14 @@ Decisions made while building:
 - The access token only gates the socket handshake; a live session keeps its socket until the session ends or access is lost.
 - Presence uses heartbeats (20 s) with a 60 s stale limit; a user with two tabs may show offline for up to 20 s after closing one.
 - Admins cannot edit other people's messages (only delete).
+
+## Sprint 6 outcome
+Built: replies/quotes, reactions (8 emoji, toggle), @mentions (picker; stored as user ids, validated as room members), pinned messages and a pinned bar, pinned announcements, typing indicator (throttled), read receipts ("Seen by"), substring search scoped to rooms the user can read, message reports, admin moderation page (report queue, delete, delete + mute, active mutes, lift, season announcements), per-season mutes that block posting and reacting but not reading. Migration 0004.
+
+Decisions made while building:
+- **Images and stickers were dropped** at the owner's request; MinIO, uploads and the sticker set were removed before shipping.
+- Search is a case-insensitive substring match (Postgres `ILIKE` with a trigram index), with `%` and `_` matched literally; deleted messages are never searchable.
+- `member_ids()` and `readable_room_ids()` are optimised copies of `can_read`; a test asserts they agree for every role and room, so they cannot drift.
+- Admins cannot be muted. Muting is admin-only; the match umpire can delete and pin in their own match.
+- Mentions are notified in Sprint 7 (the notifications table does not exist yet); for now the mentioned message is highlighted for the person mentioned.
+- Search results do not jump to the message in context yet.

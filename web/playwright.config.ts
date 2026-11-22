@@ -8,5 +8,6 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3100",
     channel: "chrome",
     viewport: { width: 390, height: 844 },
+    actionTimeout: 10_000,
   },
 });

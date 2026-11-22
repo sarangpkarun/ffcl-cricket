@@ -141,3 +141,78 @@ async def test_socket_survives_access_token_expiry(make_user, db, ws_url, monkey
         await asyncio.sleep(1.0)  # several re-check cycles pass
         await send(who["opponent"], r["match"], "alive")
         assert (await next_of(w, "message"))["message"]["body"] == "alive"
+
+
+# ---------- Sprint 6 events ----------
+async def _room_sockets(ws_url, room, *actors):
+    socks = [await connect(f"{ws_url}/ws/rooms/{room}", token_of(a)) for a in actors]
+    for w in socks:
+        await next_of(w, "hello")
+    return socks
+
+
+async def test_rich_events_are_broadcast(make_user, db, ws_url):
+    _ctx, r, who = await world(make_user, db)
+    room = r["match"]
+    w_opp, w_ump = await _room_sockets(ws_url, room, who["opponent"], who["umpire"])
+    async with w_opp, w_ump:
+        m = (await send(who["player"], room, "what a shot")).json()
+        await next_of(w_opp, "message")
+        await who["opponent"].req("POST", f"/rooms/{room}/messages/{m['id']}/reactions", json={"emoji": "🔥"})
+        ev = await next_of(w_ump, "reaction")
+        assert ev["message_id"] == m["id"] and ev["reactions"] == {"🔥": [who["opponent"].id]}
+        await who["umpire"].req("POST", f"/rooms/{room}/messages/{m['id']}/pin")
+        assert (await next_of(w_opp, "pinned"))["message"]["pinned"] is True
+        await who["umpire"].req("POST", f"/rooms/{room}/announcements", json={"body": "Toss in 5 minutes"})
+        a = await next_of(w_opp, "message")
+        while a["message"]["kind"] != "announcement":
+            a = await next_of(w_opp, "message")
+        assert a["message"]["body"] == "Toss in 5 minutes"
+        await who["umpire"].req("DELETE", f"/rooms/{room}/messages/{m['id']}")
+        assert (await next_of(w_opp, "deleted"))["id"] == m["id"]
+
+
+async def test_typing_is_broadcast_and_throttled(make_user, db, ws_url):
+    _ctx, r, who = await world(make_user, db)
+    w_typer, w_watch = await _room_sockets(ws_url, r["match"], who["player"], who["opponent"])
+    async with w_typer, w_watch:
+        for _ in range(5):  # a burst of keystrokes
+            await w_typer.send(json.dumps({"type": "typing"}))
+        ev = await next_of(w_watch, "typing")
+        assert ev["user"]["id"] == who["player"].id
+        with pytest.raises(TimeoutError):  # the other four were throttled
+            await next_of(w_watch, "typing", timeout=0.8)
+        await asyncio.sleep(2.1)
+        await w_typer.send(json.dumps({"type": "typing"}))
+        assert (await next_of(w_watch, "typing"))["user"]["id"] == who["player"].id
+
+
+async def test_read_receipts_over_socket(make_user, db, ws_url):
+    _ctx, r, who = await world(make_user, db)
+    room = r["match"]
+    m = (await send(who["player"], room, "seen this?")).json()
+    w_reader, w_author = await _room_sockets(ws_url, room, who["opponent"], who["player"])
+    async with w_reader, w_author:
+        await w_reader.send(json.dumps({"type": "read", "last_id": m["id"]}))
+        ev = await next_of(w_author, "read")
+        assert ev["user"]["id"] == who["opponent"].id and ev["last_id"] == m["id"]
+        await w_reader.send(json.dumps({"type": "read", "last_id": m["id"]}))  # no movement: no event
+        with pytest.raises(TimeoutError):
+            await next_of(w_author, "read", timeout=0.8)
+        await w_reader.send(json.dumps({"type": "read", "last_id": "junk"}))  # bad input is ignored
+        await send(who["umpire"], room, "still alive")
+        assert (await next_of(w_author, "message"))["message"]["body"] == "still alive"
+    reads = (await who["player"].req("GET", f"/rooms/{room}/reads")).json()
+    assert reads == [{"user_id": who["opponent"].id, "name": reads[0]["name"], "last_read_id": m["id"]}]
+
+
+async def test_muted_user_keeps_receiving(make_user, db, ws_url):
+    ctx, r, who = await world(make_user, db)
+    room = r["match"]
+    await ctx.admin.req("POST", "/admin/mutes", json={"user_id": who["opponent"].id, "season_id": ctx.sid,
+                                                        "hours": 1, "reason": "cooling off"})
+    (w,) = await _room_sockets(ws_url, room, who["opponent"])
+    async with w:
+        await send(who["player"], room, "can you hear me")
+        assert (await next_of(w, "message"))["message"]["body"] == "can you hear me"
+        assert (await send(who["opponent"], room, "no")).status_code == 403

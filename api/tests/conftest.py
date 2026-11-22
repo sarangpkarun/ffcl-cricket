@@ -112,7 +112,9 @@ async def _clean_redis():
     """Every test restarts ids at 1, so stale rate-limit/presence keys from the last test must go."""
     r = aioredis.from_url(settings.redis_url)
     with contextlib.suppress(Exception):  # Redis is optional for tests that don't touch it
-        keys = [k async for k in r.scan_iter("rl:*")] + [k async for k in r.scan_iter("presence:*")]
+        keys = [k async for k in r.scan_iter("rl:*")] + [k async for k in r.scan_iter("presence:*")] + [
+            k async for k in r.scan_iter("typing:*")
+        ]
         if keys:
             await r.delete(*keys)
     with contextlib.suppress(Exception):
@@ -133,5 +135,3 @@ async def ws_url():
     yield f"ws://127.0.0.1:{port}"
     server.should_exit = True
     await task
-
-

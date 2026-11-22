@@ -9,6 +9,7 @@ from app.realtime import client, publish_room, room_channel
 from app.routers.ws import authenticate, receive_token, session_alive, ws_db
 from app.services import chat as svc
 from app.services import presence
+from app.services.ratelimit import allow
 
 router = APIRouter()
 RECHECK_SECONDS = 25  # re-verify the session and room access this often
@@ -67,8 +68,16 @@ async def room_socket(ws: WebSocket, room_id: int) -> None:
                     data = json.loads(await ws.receive_text())
                 except ValueError:
                     continue
-                if isinstance(data, dict) and data.get("type") == "ping":  # keeps presence fresh
+                kind = data.get("type") if isinstance(data, dict) else None
+                if kind == "ping":  # keeps presence fresh
                     await presence.touch(room_id, user.id)
+                elif kind == "typing" and await allow(f"typing:{room_id}:{user.id}", 1, 2):
+                    await publish_room(room_id, {"type": "typing", "user": me})
+                elif kind == "read" and isinstance(data.get("last_id"), int) and await allow(f"rl:read:{room_id}:{user.id}", 10, 10):
+                    async with ws_db(ws) as db:
+                        cursor = await svc.mark_read(db, room_id, user.id, data["last_id"])
+                    if cursor:
+                        await publish_room(room_id, {"type": "read", "user": me, "last_id": cursor})
 
         tasks = [asyncio.create_task(f()) for f in (pump, recheck, listen)]
         await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)

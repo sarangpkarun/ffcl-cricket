@@ -181,13 +181,18 @@ export type Live = {
   innings: InningsCard[];
 };
 
+export type Reactions = Record<string, number[]>;
+export type Quote = { id: number; sender_name: string | null; snippet: string | null; deleted: boolean };
 export type ChatMsg = {
   id: number;
   room_id: number;
   kind: "user" | "system" | "announcement";
   sender: { id: number; name: string; player_code: string } | null;
   body: string | null;
-  meta: unknown;
+  meta: { mentions?: { id: number; name: string }[] } | null;
+  reply_to: Quote | null;
+  reactions: Reactions;
+  pinned: boolean;
   client_id: string | null;
   created_at: string;
   edited_at: string | null;
@@ -198,6 +203,9 @@ export type RoomInfo = {
   kind: "season" | "match" | "umpire";
   title: string;
   can_post: boolean;
+  blocked_reason: string | null;
   moderator: boolean;
 };
-export type Pending = { client_id: string; body: string; failed: boolean; error?: string };
+export type Pending = { client_id: string; body: string; failed: boolean; error?: string; replyToId?: number; mentions?: number[] };
+export type Person = { id: number; name: string };
+export type Mentionable = Person & { player_code: string };

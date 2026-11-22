@@ -75,5 +75,6 @@ export async function seed(opts: { start: boolean }) {
     await call(`/matches/${m.id}/toss/confirm`, "POST", undefined, ut);
     await call(`/matches/${m.id}/start`, "POST", undefined, ut);
   }
-  return { admin, ump, ut, A, B, outsider, match: m.id, season: season.id, teams: ids };
+  const adminUser: U = { email: adminEmail, token: admin, id: 0, name: "E2E Admin" };
+  return { admin, adminUser, ump, ut, A, B, outsider, match: m.id, season: season.id, teams: ids };
 }
