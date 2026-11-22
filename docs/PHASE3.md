@@ -1,0 +1,118 @@
+# FFCL Phase 3: Tournament Management (plan)
+
+**Deliverable on approval:** write this document to `/home/sarang/Documents/FFCL/docs/PHASE3.md` (the only file created before implementation starts).
+
+## Context
+Phases 1 and 2 made a single match playable and social. A league is more than matches: someone has to build the fixture list, publish it, keep the table, record who no-showed, crown a champion and remember it next season. Today admins create each match by hand, nothing computes standings, and there are no player or team statistics. Phase 3 turns the app from "a match engine" into "a league": **a whole season can be set up, played and archived without a spreadsheet.**
+
+What already exists and is reused: the append-only ball events and `recompute()` in `api/app/services/scoring.py` (the one place a match result is derived), `say()`/`notify()`/the outbox for announcements and notifications, the admin router pattern in `routers/admin_users.py`, audit logging, versioned `rule_sets` pinned on each match, `loadtest/world.py`, and the test helpers (`tests/helpers.py`, `conftest.py`).
+
+## Decisions
+Answered by you:
+| Question | Decision |
+|---|---|
+| Points | **Win 2, tie 1, loss 0.** Configurable per season in the rule set. |
+| Format | **Round robin, then semi-finals and final** (top four qualify). Single or double round robin is a setting. |
+| Tie-break order | **Points, then net run rate, then wins, then head-to-head, then team name** (so the table is always fully ordered). Net run rate counts a team that is all out as having faced the full 7 overs. |
+| Walkover | **Present team gets the full win points, absent team gets 0.** No scores are recorded, so batting and bowling stats are untouched and net run rate ignores the match. |
+
+Defaults I chose (tell me if any are wrong; each is a setting):
+| Question | Default |
+|---|---|
+| Knockout match ends tied | The team that finished higher in the league advances. (Replay and super over are the alternatives.) |
+| Abandoned match / no result | 1 point each, ignored by net run rate and stats. Or reschedule it as a replay. |
+| Umpire duty missed | The team that supplied the umpire loses **1 point** (the roadmap's rule). Admin or umpire records it; admins can reverse it. |
+| Player of the match | Chosen by the umpire (or an admin) from either team, with the app suggesting the best performer. |
+| Stat qualifiers | Best strike rate needs 12 balls faced, best economy needs 2 overs bowled (both configurable). |
+| Who sees what | Fixtures, table and leaderboards are readable by every signed-in user now; Phase 4 opens them to the public. Unpublished fixtures are visible to admins only. |
+| Still open from before | **Toss timeout when a captain is absent.** It becomes much simpler once walkovers exist (it can end in one), but I still need the rulebook wording. |
+
+## Architecture
+- **Derived, not stored, wherever possible.** The table and all statistics are computed from the immutable ball events and a small results ledger, so a correction or a changed rule recalculates everything and nothing can drift. Never edit a stored total.
+- **One results ledger.** A `match_results` row is written (and rewritten) only by `finish_match()`, called from the same place `recompute()` runs. Normal results, ties, walkovers and abandonments all produce one row. The table reads only from this ledger plus point adjustments.
+- **Pure engines, tested to death.** Fixture generation, knockout seeding and the standings table (net run rate, tie-breaks, head-to-head) are plain Python with no database, covered by worked examples and property tests, exactly like the game engine.
+- **Config in the rule set.** Points, tie-break order, qualifiers, duty penalty and knockout size live in `rule_sets.config` (versioned; each match keeps the version it started under). Standings use the season's current version, so changing points mid-season reprices the whole table consistently.
+- **Statistics by SQL over the latest ball revisions**, restricted to matches with a normal result, cached in Redis for 30 seconds. Corrections show up immediately because nothing is pre-aggregated.
+- **Fixtures are drafts until published.** Publishing notifies everyone involved; rescheduling a published match notifies again.
+- **Archived seasons are read-only** (one guard shared by every write route).
+
+## Data model (migrations 0006-0009)
+- `stages(id, season_id, kind round_robin|knockout, name, ord, config jsonb)`; matches gain `stage_id`, `round_label`, `published_at`.
+- `match_results(match_id unique, result_type normal|tie|walkover|abandoned|no_result, winner_team_id, a_runs, a_balls_faced, a_wickets, b_runs, b_balls_faced, b_wickets, decided_at)`.
+- `point_adjustments(id, season_id, team_id, match_id null, points int, kind umpire_duty|conduct|manual, reason, created_by, voided_at)`.
+- `umpire_duties(match_id unique, umpire_id, team_id, status assigned|performed|missed|replaced, note, decided_by)`.
+- `match_awards(match_id, kind potm, user_id, chosen_by)`; unique per match and kind.
+- `roster_changes(id, team_id, out_user_id, in_user_id, reason, status pending|approved|rejected, requested_by, decided_by, decided_at)`.
+- `phone_change_requests(id, user_id, new_phone, reason, status pending|approved|rejected|completed, decided_by)`.
+- Match status gains `abandoned`; Match gets `result_type` through the ledger.
+
+## Sprints (about 5 weeks)
+
+### Sprint 9: Fixtures and scheduling (week 1)
+- Migration 0006; `engine/fixtures.py`: round-robin generator (circle method, odd team counts get byes, optional second leg, home/away balanced), plus a scheduler that spreads matches over dates and time slots with no team playing twice at once.
+- Umpire suggestion: each team supplies umpires evenly; never someone playing in that match or at the same time.
+- API: create stages, generate (preview first, then save as unpublished), edit/reschedule/delete drafts, publish, conflict checks (team or umpire double-booked), notifications ("fixtures published", "match rescheduled").
+- UI: **Fixtures** page (Upcoming / Live / Completed, team filter, status badges) and an admin **Season setup** wizard (teams, stages, generate, review, publish).
+- **Exit:** an admin generates a full round robin for 6 teams, adjusts it and publishes; players see only published matches.
+
+### Sprint 10: Results ledger, points table, knockouts (week 2)
+- Migration 0007; `finish_match()` hooked into `recompute()` so every completion, correction and withdrawn result updates the ledger.
+- `engine/standings.py`: points, net run rate, tie-breaks (including head-to-head among the tied group), point adjustments.
+- Knockouts: generate semi-finals from the top four (1v4, 2v3), the final is created automatically when both semis finish (idempotent), tie rule applied, season champion recorded.
+- API and UI: **Points table** page (position, played, won, tied, lost, points, NRR, adjustments), highlights qualifying places, per-team form guide.
+- **Exit:** play a full 4-team season; the table is correct after corrections (including a flipped result) and the final is created without admin action.
+
+### Sprint 11: Walkovers, abandonment, umpire duty, adjustments (week 3)
+- Migration 0008; umpire or admin declares a walkover (who was absent) or abandons a match (reason, replay option); both announce in the match chat, notify everyone and write the ledger row; no ball events are created.
+- Umpire duty records are created from the umpire assignment, marked performed when the umpire runs the match, or missed by admin or umpire (which creates the -1 point adjustment). Admins can reverse it; every step is audited.
+- Admin **Points adjustments** screen (add, list, void).
+- **Exit:** a walkover, an abandoned match and a missed duty each change the table exactly as configured and can be reversed.
+
+### Sprint 12: Statistics and leaderboards (week 4)
+- `services/stats.py`: batting (runs, balls, 4s, 6s, strike rate, highest score, innings, dismissals), bowling (balls, runs, wickets, economy, best figures), team (win %, NRR), all from the latest ball revisions of normal-result matches, with the qualifier thresholds.
+- Leaderboards: most runs, most wickets, highest score, best strike rate, best economy, most sixes, most fours, most player-of-the-match awards, best win percentage; filters by season, team and player.
+- Player of the match: umpire/admin picks (with suggestion); migration 0008 table.
+- UI: **Leaderboards** page, **Player** page (season and career, match history), team statistics block on the team page.
+- **Exit:** stats reconcile exactly with scorecards (sum of player runs equals team totals minus penalties), including after corrections.
+
+### Sprint 13: Approvals, history, rules and exports (week 5)
+- Migration 0009; **roster changes**: captains request a replacement, admins approve; blocked if the outgoing player is in an upcoming lineup, the incoming player is already in a team, or the roster would exceed 7.
+- **Phone number changes**: a player requests, an admin approves, then the player proves the new number by OTP before it replaces the old one (the old number is freed and the change is audited).
+- **Season archive and history**: archive makes the season read-only; a Season history page shows past champions, final tables and top performers.
+- **Rules versions screen**: create a new version (copy and edit), see differences from the previous one, apply it to a season; matches keep the version they started under.
+- **Audit log viewer** (filter by person, action, record, date) and **CSV exports** (fixtures, table, player statistics).
+- Final pass: load test with a full season, security review addendum.
+- **Exit:** Phase 3 definition of done below.
+
+## Edge cases to test
+Odd number of teams (byes); a team entered twice in one slot; umpire who is also playing; rescheduling a match after publish; a result corrected after the table was published (including a win becoming a loss, a tie becoming a win, and a completed match reopening); tie on points among three teams (head-to-head mini-table); all-out net run rate; chase finished early (actual balls); walkover then the "absent" team protests (reversal); abandoning a match with balls already played; duty marked missed twice; a player transferred mid-season (stats stay with the matches they played, not the team they are on now); statistics when a ball is corrected after the leaderboard was cached; archiving a season with unfinished matches (must refuse); phone number requested that already belongs to someone else; two admins approving the same request at once.
+
+## Risks
+| Risk | Mitigation |
+|---|---|
+| Table or stats drift from the real results | Nothing is stored that is not derived; a test rebuilds the table from scratch and compares it after every kind of correction |
+| Tie-break rules are subtle (head-to-head in a 3-way tie) | Pure engine with worked examples from real cricket tables and property tests (order is total and deterministic) |
+| Fixture generator produces unplayable schedules | Preview before saving, conflict checks on every edit, and a test that no team plays twice in a slot |
+| Leaderboard queries slow down as seasons accumulate | Indexes on ball events by innings and over, 30-second cache, load test with a full season |
+| Rule changes mid-season confuse people | Rule versions are explicit, shown with differences, and matches keep the version they started under |
+| Approvals (roster, phone) abused | Every request is audited, limited to one pending per person, and approval re-checks the conditions at decision time |
+
+## Critical files
+- New: `api/app/engine/fixtures.py`, `standings.py`, `knockout.py`; `api/app/services/results.py` (`finish_match`), `stats.py`, `schedule.py`; routers `fixtures.py`, `standings.py`, `stats.py`, `walkovers.py`, `roster.py`, `phone_changes.py`, `admin_rules.py`, `admin_audit.py`, `exports.py`; migrations 0006-0009.
+- Modified: `api/app/db/models.py`, `api/app/services/scoring.py` (`recompute` calls `finish_match`), `api/app/routers/matches.py` and `seasons.py` (publish, archive guard), `api/app/services/match_events.py` (walkover and abandon announcements), `api/app/services/notify.py` (new kinds), `api/app/engine/rules.py` (points, tie-breaks, qualifiers in the default rule set).
+- Web: `app/fixtures`, `app/standings`, `app/leaderboards`, `app/players/[id]`, `app/seasons/history`, admin `season setup`, `walkovers`, `adjustments`, `roster-changes`, `phone-requests`, `rules`, `audit`; `BottomNav` gets Fixtures and Table.
+- Reuse: `recompute()`, `say()`/`notify()`/outbox, `admin_users.py` structure, `tests/helpers.py::setup_match` and `play`, `loadtest/world.py`, `engine/innings.py::summarize_innings` (runs and balls faced feed net run rate and the ledger).
+
+## Verification
+- Engine unit tests: fixtures (every pair meets, no team twice per round, byes), knockout seeding, standings (points, NRR with all-out quota, 2- and 3-way head-to-head, adjustments, deterministic order) with worked examples and property tests.
+- API tests: ledger written for every result type and updated by corrections, withdrawn results removed, table equals the table rebuilt from scratch, walkover/abandon/duty effects and reversals, publish visibility, conflicts, stats reconcile with scorecards, approvals and their re-checks, archive read-only, CSV contents.
+- Browser tests (phone viewport): admin generates and publishes fixtures; a player sees the fixtures; a played match moves the table; leaderboards and a player page render; a roster change and a phone change complete.
+- Load test: a 6-team double round robin plus knockouts played by the simulator, then standings and leaderboard timings and a rebuild-from-scratch comparison.
+- Manual: run a short season end to end using only the app.
+
+## Definition of done
+- An admin builds, publishes, runs and archives a complete season (round robin, semi-finals, final) inside the app.
+- The points table, net run rate, tie-breaks, walkovers, abandonments and umpire-duty penalties behave exactly as configured and can be reversed with an audit trail.
+- Leaderboards and player pages reconcile with the scorecards, including after corrections.
+- Roster and phone-number changes need approval; archived seasons cannot be modified.
+- Tests, lint, browser tests and the load test are green; documented in `docs/PHASE3.md`.
