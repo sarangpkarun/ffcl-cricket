@@ -11,6 +11,7 @@ from app.deps import get_current_user, is_admin
 from app.engine.leaderboards import CATEGORIES, Perf, Totals, aggregate, leaderboards, suggest_potm
 from app.services import stats as svc
 from app.services.announce import say
+from app.services.archive import ensure_match_open
 from app.services.notify import notify
 from app.services.outbox import flush as flush_outbox
 from app.services.results import season_table
@@ -184,6 +185,7 @@ async def set_potm(match_id: int, body: PotmIn, user: User = Depends(get_current
     m, res = await _finished(db, match_id)
     if m.umpire_id != user.id and not await is_admin(db, user):
         raise HTTPException(403, "Only the match umpire or an admin can choose the player of the match")
+    await ensure_match_open(db, m)
     if res is None or res.result_type not in svc.COUNTED:
         raise HTTPException(409, "Player of the match can be chosen once the match has a result")
     in_match = await db.scalar(select(MatchPlayer.id).where(MatchPlayer.match_id == match_id, MatchPlayer.user_id == body.user_id))

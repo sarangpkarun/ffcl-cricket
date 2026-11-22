@@ -15,6 +15,7 @@ from app.engine.knockout import SUPPORTED_QUALIFIERS, round_labels, seed_pairs
 from app.realtime import publish_change
 from app.services import match_events
 from app.services.announce import say_season
+from app.services.archive import ensure_open
 from app.services.chat import ensure_match_rooms
 from app.services.duties import sync_duty
 from app.services.notify import notify
@@ -82,6 +83,7 @@ async def generate_knockouts(season_id: int, body: KnockoutIn, admin: User = Dep
                              db: AsyncSession = Depends(get_session)) -> dict:
     """Seed the top teams from the table into the semi-finals (or straight into the final)."""
     season = await _season(db, season_id)
+    await ensure_open(db, season_id)
     if await _stage(db, season_id):
         raise HTTPException(409, "This season already has knockouts")
     table = await season_table(db, season)

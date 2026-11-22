@@ -9,6 +9,7 @@ from app.db.models import Match, Team, UmpireDuty, User
 from app.db.session import get_session
 from app.deps import get_current_user, is_admin, require_admin
 from app.services import duties as svc
+from app.services.archive import ensure_match_open
 from app.services.outbox import flush as flush_outbox
 
 router = APIRouter(tags=["duties"])
@@ -61,6 +62,7 @@ async def duty_missed(duty_id: int, body: ReasonIn, user: User = Depends(get_cur
     duty = await svc.get_duty(db, duty_id)
     match = await db.get(Match, duty.match_id)
     assert match is not None
+    await ensure_match_open(db, match)
     stepped_in = match.umpire_id == user.id and user.id != duty.umpire_id
     if not (await is_admin(db, user) or stepped_in):
         raise HTTPException(403, "Only an admin, or the umpire who took over, can record a missed duty")
@@ -74,6 +76,7 @@ async def duty_missed(duty_id: int, body: ReasonIn, user: User = Depends(get_cur
 async def duty_reverse(duty_id: int, body: ReasonIn, admin: User = Depends(require_admin),
                        db: AsyncSession = Depends(get_session)) -> dict:
     duty = await svc.get_duty(db, duty_id)
+    await ensure_match_open(db, await db.get(Match, duty.match_id))  # type: ignore[arg-type]
     await svc.reverse_missed(db, duty, admin, body.reason.strip())
     await db.commit()
     await flush_outbox(db)

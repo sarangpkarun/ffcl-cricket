@@ -29,6 +29,9 @@ KINDS: dict[str, tuple[str, bool]] = {
     "adjustment": ("My team's points are adjusted", True),
     "duty": ("An umpire duty is recorded as missed", True),
     "award": ("I am named player of the match", True),
+    "roster": ("A roster change involving me or my team is decided", True),
+    "phone": ("My phone number change is decided", True),
+    "approval": ("Something needs an admin's approval", True),
 }
 
 

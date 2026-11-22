@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import AuditLog, Match, PointAdjustment, Season, Team, User
 from app.db.session import get_session
 from app.deps import require_admin
+from app.services.archive import ensure_open
 from app.services.notify import notify
 from app.services.outbox import flush as flush_outbox
 from app.services.schedule import team_people
@@ -61,6 +62,7 @@ async def add_adjustment(season_id: int, body: AdjustmentIn, admin: User = Depen
                          db: AsyncSession = Depends(get_session)) -> dict:
     if not await db.get(Season, season_id):
         raise HTTPException(404, "Season not found")
+    await ensure_open(db, season_id)
     team = await db.get(Team, body.team_id)
     if not team or team.season_id != season_id:
         raise HTTPException(422, "The team must belong to this season")
@@ -89,6 +91,7 @@ async def void_adjustment(adjustment_id: int, body: VoidIn, admin: User = Depend
     adj = await db.get(PointAdjustment, adjustment_id)
     if adj is None:
         raise HTTPException(404, "Adjustment not found")
+    await ensure_open(db, adj.season_id)
     if adj.voided_at is None:
         adj.voided_at = datetime.now(UTC)
         db.add(AuditLog(actor_id=admin.id, action="adjustment.void", entity="point_adjustment", entity_id=adj.id,

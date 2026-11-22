@@ -15,6 +15,7 @@ from app.engine.fixtures import PlannedMatch, round_robin, schedule, slot_times,
 from app.engine.rules import DEFAULT_RULES
 from app.realtime import publish_change
 from app.services import match_events
+from app.services.archive import ensure_match_open, ensure_open
 from app.services.chat import ensure_match_rooms
 from app.services.duties import sync_duty
 from app.services.notify import notify
@@ -135,6 +136,7 @@ async def generate(season_id: int, body: GenerateParams, admin: User = Depends(r
                    db: AsyncSession = Depends(get_session)) -> dict:
     """Create the league stage and its matches as unpublished drafts."""
     season = await _season(db, season_id)
+    await ensure_open(db, season_id)
     existing = list(await db.scalars(select(Stage).where(Stage.season_id == season_id, Stage.kind == "round_robin")))
     if existing and not body.replace_drafts:
         raise HTTPException(409, "This season already has a league stage. Use replace_drafts to rebuild its drafts.")
@@ -188,6 +190,7 @@ async def publish(season_id: int, body: PublishIn, admin: User = Depends(require
                   db: AsyncSession = Depends(get_session)) -> dict:
     """Make drafts visible and tell everybody involved. Safe to repeat: published matches are skipped."""
     await _season(db, season_id)
+    await ensure_open(db, season_id)
     q = select(Match).where(Match.season_id == season_id, Match.published_at.is_(None)).order_by(Match.scheduled_at, Match.id)
     if body.match_ids is not None:
         q = q.where(Match.id.in_(body.match_ids))
@@ -285,6 +288,7 @@ async def delete_match(match_id: int, admin: User = Depends(require_admin),
     match = await db.get(Match, match_id)
     if not match:
         raise HTTPException(404, "Match not found")
+    await ensure_match_open(db, match)
     await delete_draft_match(db, match)
     _audit(db, admin, "match.delete", "match", match_id, after={"match_no": match.match_no})
     await db.commit()

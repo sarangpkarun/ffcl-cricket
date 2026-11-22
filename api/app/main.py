@@ -10,18 +10,24 @@ from app.core.config import assert_production_safe, settings
 from app.db.session import engine
 from app.routers import (
     adjustments,
+    admin_audit,
+    admin_rules,
     admin_users,
     auth,
     chat,
     declarations,
     duties,
+    exports,
     fixtures,
     live,
     matches,
     moderation,
     notifications,
+    phone_changes,
     play,
+    roster,
     seasons,
+    seasons_admin,
     standings,
     stats,
     teams,
@@ -46,7 +52,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation,
-          notifications, ws_me, admin_users, fixtures, standings, declarations, duties, adjustments, stats):
+          notifications, ws_me, admin_users, fixtures, standings, declarations, duties, adjustments, stats, seasons_admin, roster, phone_changes, admin_rules, admin_audit, exports):
     app.include_router(r.router)
 
 

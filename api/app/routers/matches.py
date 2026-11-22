@@ -13,6 +13,7 @@ from app.routers.teams import can_manage
 from app.schemas import LineupIn, MatchDetail, MatchIn, MatchOut, MatchPatch
 from app.services import match_events
 from app.services.announce import say, team_names
+from app.services.archive import ensure_match_open, ensure_open
 from app.services.chat import ensure_match_rooms
 from app.services.duties import sync_duty
 from app.services.notify import notify
@@ -55,6 +56,7 @@ async def create_match(
     season = await db.get(Season, season_id)
     if not season:
         raise HTTPException(404, "Season not found")
+    await ensure_open(db, season_id)
     if body.team_a_id == body.team_b_id:
         raise HTTPException(400, "A team cannot play itself")
     for tid in (body.team_a_id, body.team_b_id):
@@ -125,6 +127,7 @@ async def update_match(
     db: AsyncSession = Depends(get_session),
 ) -> Match:
     m = await _match(db, match_id)
+    await ensure_match_open(db, m)
     if m.status != "scheduled":
         raise HTTPException(409, "Only scheduled matches can be edited")
     data = body.model_dump(exclude_unset=True)
@@ -175,6 +178,7 @@ async def set_lineup(
 ) -> MatchDetail:
     m = await _match(db, match_id)
     await ensure_visible(db, user, m)
+    await ensure_match_open(db, m)
     if body.team_id not in (m.team_a_id, m.team_b_id):
         raise HTTPException(400, "Team is not part of this match")
     if m.status not in ("scheduled", "toss"):

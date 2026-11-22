@@ -7,6 +7,7 @@ from app.db.models import Season, Team, TeamMember, User, UserRole
 from app.db.session import get_session
 from app.deps import get_current_user, is_admin, require_admin
 from app.schemas import MemberIn, MemberOut, TeamDetail, TeamIn, TeamOut, TeamPatch
+from app.services.archive import ensure_open
 
 router = APIRouter(tags=["teams"])
 MAX_ROSTER = 7  # TODO(sprint 2): read from the season's rule set
@@ -56,6 +57,7 @@ async def create_team(
 ) -> Team:
     if not await db.get(Season, season_id):
         raise HTTPException(404, "Season not found")
+    await ensure_open(db, season_id)
     team = Team(season_id=season_id, **body.model_dump())
     db.add(team)
     try:
@@ -88,6 +90,7 @@ async def update_team(
     db: AsyncSession = Depends(get_session),
 ) -> TeamDetail:
     team = await _team(db, team_id)
+    await ensure_open(db, team.season_id)
     data = body.model_dump(exclude_unset=True)
     admin = await is_admin(db, user)
     if not (admin or team.captain_id == user.id):
@@ -134,6 +137,7 @@ async def add_member(
     db: AsyncSession = Depends(get_session),
 ) -> MemberOut:
     team = await _team(db, team_id)
+    await ensure_open(db, team.season_id)
     manager = await can_manage(db, user, team)
     target_id = body.user_id or user.id
     if target_id != user.id and not manager:
@@ -179,6 +183,7 @@ async def approve_member(
     db: AsyncSession = Depends(get_session),
 ) -> MemberOut:
     team = await _team(db, team_id)
+    await ensure_open(db, team.season_id)
     if not await can_manage(db, user, team):
         raise HTTPException(403, "Not allowed")
     member = await db.scalar(
@@ -201,6 +206,7 @@ async def remove_member(
     db: AsyncSession = Depends(get_session),
 ) -> None:
     team = await _team(db, team_id)
+    await ensure_open(db, team.season_id)
     if user_id != user.id and not await can_manage(db, user, team):
         raise HTTPException(403, "Not allowed")
     member = await db.scalar(

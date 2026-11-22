@@ -56,7 +56,12 @@ async def update_season(
     season = await db.get(Season, season_id)
     if not season:
         raise HTTPException(404, "Season not found")
-    for k, v in body.model_dump(exclude_unset=True).items():
+    data = body.model_dump(exclude_unset=True)
+    if season.status == "archived":
+        raise HTTPException(409, "This season is archived. Unarchive it before changing it")
+    if data.get("status") == "archived":
+        raise HTTPException(409, "Use the archive action to archive a season")
+    for k, v in data.items():
         setattr(season, k, v)
     try:
         await db.commit()

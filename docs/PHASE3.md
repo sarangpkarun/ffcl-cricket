@@ -75,7 +75,7 @@ Defaults I chose (tell me if any are wrong; each is a setting):
 - UI: **Leaderboards** page, **Player** page (season and career, match history), team statistics block on the team page.
 - **Exit:** stats reconcile exactly with scorecards (sum of player runs equals team totals minus penalties), including after corrections.
 
-### Sprint 13: Approvals, history, rules and exports (week 5)
+### Sprint 13: Approvals, history, rules and exports (week 5) ✅ done
 - Migration 0009; **roster changes**: captains request a replacement, admins approve; blocked if the outgoing player is in an upcoming lineup, the incoming player is already in a team, or the roster would exceed 7.
 - **Phone number changes**: a player requests, an admin approves, then the player proves the new number by OTP before it replaces the old one (the old number is freed and the change is audited).
 - **Season archive and history**: archive makes the season read-only; a Season history page shows past champions, final tables and top performers.
@@ -179,3 +179,31 @@ Decisions and limits:
 - A penalty positioned after the point an innings ended (for example because a correction made the innings end earlier) is not applied. That is existing engine behaviour and stats follow it.
 - Knockout matches count toward player statistics (and awards) but not toward the league table.
 - Roster transfers (Sprint 13) will not change past statistics; this sprint already attributes each match to the team the player played for.
+
+## Sprint 13 outcome
+Built:
+- **Roster changes** (`roster_changes`): the captain (or an admin) asks to swap one player for another with a reason; admins are notified and decide on the new **Approvals** screen. Blocked, both when asking and again when approving: the outgoing player is not an approved member or is the captain, is in the lineup of any unfinished match, the incoming player is not active and verified or is already in a team this season (their own join request to this team is fine), or another request for either player is pending. Approving swaps the memberships, notifies the team, both players and the requester, and is audited. Requests are locked while decided, so two admins pressing Approve at once produce one success and one 409. Rejection needs a reason; the requester or an admin can cancel.
+- **Phone number changes** (`phone_change_requests`): a player asks from the profile page, an admin approves, then the player confirms a code sent to the **new** number. Only then does the number change (and stay verified); the old number is freed. Taken or reserved numbers get one vague message, the number is checked again at approval and verification, requests and code checks are rate-limited, audit entries hold masked numbers.
+- **Season archive**: `POST /seasons/{id}/archive` refuses while any match, even an unpublished draft, is unfinished and lists them. Archived seasons are read-only through one guard (`services/archive.py`) used by every write route; an admin can unarchive (audited). The status can no longer be set to archived through a plain patch.
+- **Season history** `GET /history` and a **Season history** page: for every completed or archived season, the champion, the final table, and the top batter, bowler and award winner.
+- **Rule versions** (`/admin/rules`): list versions with the seasons and matches using them, see what changed from the previous version, create a new version from any version (changes are merged onto a copy of what the game really uses, validated with reasons, saved as the next version number with an audit entry), and apply a version to a season. Applying switches the table and every match that has not started; matches under way or finished keep the version they started under. Older rule sets that stored only a few settings are completed with the defaults, which is what the game always did at run time.
+- **Audit log viewer** (`/admin/audit`): filter by person, action (prefix, so "match" finds all match actions), record type and id, date range and text in the reason; cursor paging; details of before and after.
+- **CSV exports** for fixtures, the table and player statistics (admin only) with formula-injection protection, downloadable from the season setup page, which also holds the archive controls.
+- **Load test** (`loadtest/season.py`): a six-team double round robin, semi-finals and final, played six matches at a time through the API. It passed on the first run: 33 results, the table identical after a full rebuild from the ball events, player runs equal to ledger runs (453), champion equals the final's winner, writes refused after archiving, p95 under 160 ms for every read.
+- **Security addendum** in `docs/SECURITY.md` (nine findings and decisions).
+- Migration 0010 (roster changes, phone changes, `archived_at`).
+
+Tests: 5 rule-engine tests; 9 roster and phone API tests (including simultaneous approvals, re-checks at approval, a number registered while a change waits); 8 archive, history, rule-version, audit and export tests (including a regression for partial legacy rule sets that the browser test found); one browser test covering a roster change, a phone change with a real code, a rule version, the audit log, a CSV download, archiving and the refusal afterwards, and history.
+
+Decisions and limits:
+- A swap, not an add: the roster size never changes, so there is no separate "roster full" check.
+- Matches in a rule change: a match counts as "not started" while it is scheduled, in the toss, or ready.
+- Chat stays open in archived seasons.
+- A new season starts on the latest version of the FFCL rule set, so saving a new version changes the default for seasons created afterwards (existing seasons only change when an admin applies it). The browser test therefore changes a harmless setting, because rule versions cannot be deleted.
+
+## Phase 3 definition of done
+- An admin builds, publishes, runs and archives a complete season inside the app: shown by the season load test and the browser tests.
+- Table, net run rate, tie-breaks, walkovers, abandonments and umpire penalties behave as configured and can be reversed with an audit trail: Sprints 10 and 11.
+- Leaderboards and player pages reconcile with the scorecards, including after corrections: Sprint 12 tests and the load test.
+- Roster and phone number changes need approval; archived seasons cannot be modified: Sprint 13.
+- Tests, lint, browser tests and load test are green; documented here.

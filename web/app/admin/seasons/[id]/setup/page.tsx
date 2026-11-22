@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { btnCls, btnGhost, ErrorText, Field, inputCls, RequireAuth } from "@/components/ui-bits";
-import { api, del, patch, post, type Bracket, type Fixture, type Season, type Standings, type Team } from "@/lib/api";
+import { api, del, download, patch, post, type Bracket, type Fixture, type Season, type Standings, type Team } from "@/lib/api";
 
 type PreviewRow = {
   index: number; round_no: number; team_a: string; team_b: string; scheduled_at: string;
@@ -66,6 +66,41 @@ function DraftRow({ f, umpires, onChange }: { f: Fixture; umpires: Umpire[]; onC
       </div>
       <ErrorText msg={err} />
     </li>
+  );
+}
+
+function SeasonAdmin({ id }: { id: string }) {
+  const [status, setStatus] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  useEffect(() => { api<{ status: string }>(`/seasons/${id}`).then((s) => setStatus(s.status)).catch(() => {}); }, [id]);
+  const act = async (fn: () => Promise<unknown>) => {
+    setErr(null);
+    try { await fn(); setStatus((await api<{ status: string }>(`/seasons/${id}`)).status); setConfirm(false); } catch (e) { setErr((e as Error).message); }
+  };
+  return (
+    <section aria-label="Season archive and exports" className="space-y-3 rounded-lg border p-4">
+      <h2 className="font-medium">Archive and exports</h2>
+      <div className="flex flex-wrap gap-2">
+        {(["fixtures", "table", "players"] as const).map((k) => (
+          <button key={k} className={btnGhost} onClick={() => act(() => download(`/seasons/${id}/export/${k}.csv`, `season-${id}-${k}.csv`))}>Download {k} (CSV)</button>
+        ))}
+      </div>
+      <ErrorText msg={err} />
+      {status === "archived" ? (
+        <>
+          <p className="text-sm text-muted-foreground">This season is archived and read-only.</p>
+          <button className={btnGhost} onClick={() => act(() => post(`/seasons/${id}/unarchive`))}>Unarchive</button>
+        </>
+      ) : !confirm ? (
+        <button className={btnGhost} onClick={() => setConfirm(true)}>Archive this season</button>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm">Nothing in an archived season can be changed. Continue?</p>
+          <button className={btnCls} onClick={() => act(() => post(`/seasons/${id}/archive`))}>Yes, archive it</button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -231,6 +266,7 @@ function Setup() {
           )}
         </section>
       )}
+      <SeasonAdmin id={id} />
       {result && (
         <p role="status" className="rounded-lg bg-muted p-3 text-sm">
           Published {result.published} fixtures; {result.notified} people notified.

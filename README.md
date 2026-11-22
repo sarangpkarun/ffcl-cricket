@@ -28,4 +28,6 @@ With the stack running: `cd api && DATABASE_URL=postgresql+asyncpg://ffcl:ffcl@l
 
 It plays whole matches concurrently (with duplicate submits and racing resolves), keeps WebSocket watchers connected, then checks every match has exactly 84 ball events, the right result, and that every watcher ended on the database's final sequence number. Chat under load (240 players chatting while 30 matches are played, live watchers in every room): `uv run python -m loadtest.chat_load --matches 30`, add `--api http://localhost:8010` to point it at another server (for example `uvicorn app.main:app --workers 4 --port 8010`).
 
+A whole season: `uv run python -m loadtest.season --teams 6` generates and publishes a double round robin for 6 teams, plays all 30 league matches and the semi-finals and final (six at a time), then rebuilds the table from the ball events and compares it, checks player runs against the results ledger, archives the season, and times every read endpoint with a season's data (about 12 seconds in all on a dev laptop, p95 under 160 ms per read).
+
 On a dev laptop (one uvicorn worker, auto-reload on): 10 matches = 1,861 requests in ~8s, 30 matches = 5,581 requests in ~23s, p95 about half a second, zero errors. Production should run several workers behind Nginx.

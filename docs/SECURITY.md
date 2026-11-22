@@ -56,6 +56,26 @@ event loop; the test suite refuses to run unless `DATABASE_URL` is set explicitl
 | OTP codes are written to the log (console provider). | No SMS provider is configured yet. | Plug in a real SMS provider; never log codes. |
 | Dependency audits are run by hand. | Both are clean today. | Add `pnpm audit --prod` and `pip-audit` to CI. |
 
+## Addendum: Phase 3 review (Sprint 13)
+Reviewed every endpoint added in Phase 3 (fixtures, results, standings, walkovers, duties, adjustments, statistics, player of the match, roster and phone changes, archive, rule versions, audit log, exports) for authorisation, input handling and data exposure.
+
+| # | Finding | Fix or decision |
+|---|---|---|
+| A1 | A phone-change request could be used to find out whether a number is registered ("already taken" vs "accepted"). | Taken numbers (registered, or in someone else's open request) all return one vague message that never names the owner, and requests are limited to 5 an hour. Registration itself still tells you a number is used; that was already accepted in the Sprint 8 review. |
+| A2 | The new number is only trusted after a code sent to it, but someone could register that number while the change waits for the code. | The number is checked again at approval and again at verification; if it was taken meanwhile the change fails with the same vague message and the old number stays. |
+| A3 | Audit entries for phone changes could leak numbers to anyone with audit access. | Entries store masked numbers (country prefix and last two digits). The admin approvals screen shows the full new number because the admin must judge it, and nothing else does. |
+| A4 | Exported CSV files open in spreadsheets, where a player or team name such as `=HYPERLINK(...)` becomes a formula. | Every text cell starting with `=`, `+`, `-`, `@`, tab or carriage return gets a leading apostrophe. Tested with hostile team names. Exports are admin-only. |
+| A5 | Two admins pressing Approve at once could apply a request twice. | Requests are locked while decided (`SELECT ... FOR UPDATE`); the loser gets HTTP 409. Roster approval re-checks every condition at decision time. Tested with simultaneous approvals. |
+| A6 | Audit search text containing `%` or `_` acted as a wildcard (a cheap way to match everything). | Wildcards are escaped. The viewer is admin-only, paginated by cursor (limit 200). |
+| A7 | Someone could rewrite history of a closed season. | One guard (`services/archive.py`) is called by every write route that touches a season: teams, members, matches, lineups, every play and correction route, fixtures, knockouts, adjustments, duties, awards, roster changes and rule changes. A season can only be archived when every match is finished, and only unarchived by an admin (audited). The Sprint 13 test calls thirteen different write routes on an archived season and expects 409 from each. |
+| A8 | A rule version could be saved with nonsense (zero overs, unknown settings) and break live scoring. | Rule changes are merged onto a copy, validated (ranges, known keys, tie-break names, over numbers within the match) and rejected with reasons. Existing versions are never edited; matches already started keep their version. |
+| A9 | Admin-only data visible to others: roster requests, phone requests, audit log. | Phone requests, the audit log and exports are admin-only. Roster requests are visible to admins, the team's captain, and the two players named. Tested with outsiders. |
+
+Accepted for now (Phase 5):
+- Chat in an archived season stays open (conversation is not league data). Revisit if moderation load requires it.
+- Leaderboards, history, the table and player pages are readable by every signed-in user; Phase 4 decides what becomes public.
+- Statistics are computed on each request (no caching). Measured with a 33-match season: p95 under 160 ms for every read endpoint. Add a cache if seasons grow far beyond that.
+
 ## Re-running the checks
 
 ```
@@ -64,6 +84,7 @@ cd web && pnpm audit --prod                       # web dependencies
 cd api && uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/req.txt \
   && uvx pip-audit -r /tmp/req.txt --no-deps --disable-pip      # Python dependencies
 cd api && uv run python -m loadtest.chat_load --matches 30      # concurrency, fan-out and pool limits
+cd api && uv run python -m loadtest.season --teams 6            # a whole season: play, rebuild, reconcile, archive
 ```
 
 ## Deployment checklist (before real users)

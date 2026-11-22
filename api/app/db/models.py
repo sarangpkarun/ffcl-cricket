@@ -91,6 +91,7 @@ class Season(Base):
     ends_on: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rule_set_id: Mapped[int | None] = mapped_column(ForeignKey("rule_sets.id"))
     champion_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Team(Base):
@@ -444,3 +445,36 @@ class MatchAward(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     chosen_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     chosen_at: Mapped[datetime] = _now()
+
+
+class RosterChange(Base):
+    """A captain asks to swap one player for another; an admin decides. Re-checked when approved."""
+
+    __tablename__ = "roster_changes"
+    id: Mapped[int] = _pk()
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
+    out_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    in_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(10), default="pending")  # pending|approved|rejected|cancelled
+    requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
+
+
+class PhoneChangeRequest(Base):
+    """A player wants a new number. An admin approves, then the player proves the new number by code."""
+
+    __tablename__ = "phone_change_requests"
+    id: Mapped[int] = _pk()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    new_phone: Mapped[str] = mapped_column(String(20), index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(10), default="pending")  # pending|approved|rejected|completed|cancelled
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

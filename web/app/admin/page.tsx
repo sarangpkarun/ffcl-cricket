@@ -16,6 +16,10 @@ function Admin() {
     <div className="space-y-5">
       <Link href="/admin/users" className="block rounded-lg border p-3 text-center text-sm">👥 People (roles, suspend)</Link>
       <Link href="/admin/moderation" className="block rounded-lg border p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>
+      <Link href="/admin/approvals" className="block rounded-lg border p-3 text-center text-sm">✅ Approvals (roster changes, phone numbers)</Link>
+      <Link href="/admin/rules" className="block rounded-lg border p-3 text-center text-sm">📏 Rule versions</Link>
+      <Link href="/admin/audit" className="block rounded-lg border p-3 text-center text-sm">🧾 Audit log</Link>
+      <Link href="/history" className="block rounded-lg border p-3 text-center text-sm">🏆 Season history</Link>
       <Link href="/admin/adjustments" className="block rounded-lg border p-3 text-center text-sm">⚖️ Points adjustments</Link>
       <Link href="/admin/duties" className="block rounded-lg border p-3 text-center text-sm">🧑‍⚖️ Umpire duties</Link>
       <h1 className="text-xl font-semibold">Seasons</h1>

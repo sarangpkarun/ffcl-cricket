@@ -27,6 +27,7 @@ from app.engine import BAT, BOWL, RuleConfig, parse_digits, play_over, validate_
 from app.realtime import publish_change
 from app.routers.teams import can_manage
 from app.services import match_events as events
+from app.services.archive import ensure_match_open
 from app.services.duties import mark_performed
 from app.services.outbox import flush as flush_outbox
 from app.services.scoring import Recomputed, engine_inputs, get_innings, load_rules, recompute
@@ -41,6 +42,7 @@ async def lock_match(db: AsyncSession, match_id: int) -> Match:
         raise HTTPException(404, "Match not found")
     if m.published_at is None:
         raise HTTPException(409, "This match has not been published yet")
+    await ensure_match_open(db, m)
     return m
 
 

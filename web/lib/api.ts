@@ -87,6 +87,23 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}): Pr
   return body as T;
 }
 
+/** Download a file the API serves (it needs the sign-in token, so a plain link will not do). */
+export async function download(path: string, filename: string): Promise<void> {
+  let t = loadTokens();
+  let res = await raw(path, {}, t?.access_token);
+  if (res.status === 401 && t) {
+    t = await refresh();
+    if (t) res = await raw(path, {}, t.access_token);
+  }
+  if (!res.ok) throw new ApiError(res.status, detail(await res.json().catch(() => ({}))));
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export const post = <T,>(path: string, data?: unknown) =>
   api<T>(path, { method: "POST", body: data === undefined ? undefined : JSON.stringify(data) });
 export const put = <T,>(path: string, data: unknown) =>
