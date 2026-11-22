@@ -47,7 +47,7 @@ function TeamLineup({ match, team, canEdit, onSaved }: { match: MatchDetail; tea
 function MatchPage() {
   const { id } = useParams<{ id: string }>();
   const { me, isAdmin } = useAuth();
-  const { live, error, refresh } = useLive(id);
+  const { live, error, refresh, connected } = useLive(id);
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [teams, setTeams] = useState<TeamDetail[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -75,6 +75,9 @@ function MatchPage() {
 
   return (
     <div className="space-y-5">
+      <p className={`text-xs ${connected ? "text-green-700" : "text-amber-700"}`} aria-live="polite">
+        {connected ? "● Live" : "○ Reconnecting…"}
+      </p>
       <Scoreboard live={live} />
       <ErrorText msg={err ?? error} />
       {live.over && live.over.your_role && live.over.state !== "resolved" && (

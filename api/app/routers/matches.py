@@ -6,6 +6,7 @@ from app.db.models import Match, MatchPlayer, RuleSet, Season, Team, TeamMember,
 from app.db.session import get_session
 from app.deps import get_current_user, require_admin, user_roles
 from app.engine.rules import DEFAULT_RULES
+from app.realtime import publish_change
 from app.routers.teams import can_manage
 from app.schemas import LineupIn, MatchDetail, MatchIn, MatchOut, MatchPatch
 
@@ -107,7 +108,9 @@ async def update_match(
         await _check_umpire(db, data["umpire_id"], m.team_a_id, m.team_b_id)
     for k, v in data.items():
         setattr(m, k, v)
+    m.seq += 1
     await db.commit()
+    await publish_change(m.id, m.seq)
     return m
 
 
@@ -153,5 +156,7 @@ async def set_lineup(
     )
     for order, uid in enumerate(ids, start=1):
         db.add(MatchPlayer(match_id=match_id, team_id=body.team_id, user_id=uid, batting_order=order))
+    m.seq += 1
     await db.commit()
+    await publish_change(m.id, m.seq)
     return await get_match(match_id, user, db)

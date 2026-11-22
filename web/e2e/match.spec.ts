@@ -87,6 +87,7 @@ test("umpire runs an over with two phones; digits stay private until reveal", as
   const bowlerPage = await loginPage(browser, bowler, path);
 
   await umpPage.getByText("Umpire console").waitFor();
+  for (const p of [umpPage, batterPage, bowlerPage]) await expect(p.getByText("● Live")).toBeVisible({ timeout: 10_000 });
   await umpPage.locator("select").nth(0).selectOption({ label: bowler.name });
   await umpPage.locator("select").nth(1).selectOption({ label: batter.name });
   await umpPage.getByRole("button", { name: "Start over" }).click();
@@ -98,9 +99,11 @@ test("umpire runs an over with two phones; digits stay private until reveal", as
 
   await enter(bowlerPage, [6, 5, 2, 1, 4, 3]);
   await expect(bowlerPage.getByText(/Locked/)).toBeVisible();
+  await bowlerPage.reload(); // a refresh mid-over must restore the locked state from the server
+  await expect(bowlerPage.getByText(/Locked/)).toBeVisible({ timeout: 10_000 });
   // opponent's page must never contain the bowler's digits before the reveal
   await expect(batterPage.getByRole("button", { name: "digit 1" })).toBeVisible();
-  await expect(umpPage.getByText(/Bowler ✅/)).toBeVisible({ timeout: 10_000 });
+  await expect(umpPage.getByText(/Bowler ✅/)).toBeVisible({ timeout: 5_000 });
   await enter(batterPage, [5, 6, 1, 2, 3, 4]);
   await expect(umpPage.getByText(/Batter ✅/)).toBeVisible({ timeout: 10_000 });
   const secret = "6️⃣ 5️⃣ 2️⃣ 1️⃣ 4️⃣ 3️⃣";

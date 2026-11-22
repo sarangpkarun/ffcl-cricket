@@ -1,3 +1,5 @@
+import os
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -13,6 +15,12 @@ from app.db.models import RuleSet, UserRole
 from app.db.session import get_session
 from app.engine.rules import DEFAULT_RULES
 from app.main import app
+
+if "DATABASE_URL" not in os.environ:
+    raise pytest.UsageError(
+        "Set DATABASE_URL explicitly (e.g. via `make test`); tests create and drop tables in "
+        "a database named ffcl_test on that server, so they never guess the target."
+    )
 
 TEST_DB = "ffcl_test"
 BASE_URL = make_url(settings.database_url)

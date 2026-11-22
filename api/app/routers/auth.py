@@ -11,10 +11,10 @@ from app.core import otp
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
-    hash_password,
+    hash_password_async,
     new_refresh_token,
     sha256,
-    verify_password,
+    verify_password_async,
 )
 from app.db.models import OtpCode, Session, User, UserRole
 from app.db.session import get_session
@@ -57,7 +57,7 @@ async def register(
         player_code=uuid.uuid4().hex[:16],
         name=body.name,
         email=body.email.lower(),
-        password_hash=hash_password(body.password),
+        password_hash=await hash_password_async(body.password),
         phone=body.phone,
     )
     db.add(user)
@@ -78,7 +78,7 @@ async def login(
     user_agent: str | None = Header(default=None),
 ) -> TokenOut:
     user = await db.scalar(select(User).where(User.email == body.email.lower()))
-    if not user or not verify_password(body.password, user.password_hash):
+    if not user or not await verify_password_async(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
     if user.status != "active":
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Account {user.status}")

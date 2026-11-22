@@ -7,7 +7,7 @@ down:
 migrate:
 	cd api && DATABASE_URL=$(LOCAL_DB) uv run alembic upgrade head && DATABASE_URL=$(LOCAL_DB) uv run python -m app.seed
 test:
-	cd api && DATABASE_URL=$(LOCAL_DB) uv run pytest -q
+	cd api && DATABASE_URL=$(LOCAL_DB) REDIS_URL=redis://localhost:56379/0 uv run pytest -q
 	cd web && pnpm test
 lint:
 	cd api && uv run ruff check . && uv run mypy app

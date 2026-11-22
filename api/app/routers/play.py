@@ -24,6 +24,7 @@ from app.db.models import (
 from app.db.session import get_session
 from app.deps import get_current_user, is_admin
 from app.engine import BAT, BOWL, RuleConfig, parse_digits, play_over, validate_submission
+from app.realtime import publish_change
 from app.routers.teams import can_manage
 from app.services.scoring import engine_inputs, get_innings, load_rules, recompute
 
@@ -54,8 +55,12 @@ def audit(db: AsyncSession, actor: User, action: str, entity: str, entity_id: in
                     reason=reason, before=before, after=after))
 
 
-def touch(m: Match) -> None:
+async def commit_match(db: AsyncSession, m: Match) -> None:
+    """Bump the sequence number, commit, then tell watchers (after the commit succeeds)."""
     m.seq += 1
+    match_id, seq = m.id, m.seq
+    await db.commit()
+    await publish_change(match_id, seq)
 
 
 async def active_innings(db: AsyncSession, m: Match) -> Innings:
@@ -108,8 +113,7 @@ async def toss_open(match_id: int, user: User = Depends(get_current_user),
             raise HTTPException(409, "Both teams need a lineup before the toss")
     db.add(Toss(match_id=m.id))
     m.status = "toss"
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/toss/winner", status_code=204)
@@ -124,8 +128,7 @@ async def toss_winner(match_id: int, body: WinnerIn, user: User = Depends(get_cu
     toss = await db.scalar(select(Toss).where(Toss.match_id == m.id))
     assert toss is not None
     toss.winner_team_id, toss.decision, toss.decided_at = body.winner_team_id, None, None
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/toss/decision", status_code=204)
@@ -140,8 +143,7 @@ async def toss_decision(match_id: int, body: DecisionIn, user: User = Depends(ge
     if not (m.umpire_id == user.id or await can_manage(db, user, team)):
         raise HTTPException(403, "Only the winning captain, umpire or admin can choose")
     toss.decision, toss.decided_at = body.decision, datetime.now(UTC)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/toss/confirm", status_code=204)
@@ -161,8 +163,7 @@ async def toss_confirm(match_id: int, user: User = Depends(get_current_user),
     toss.confirmed_by = user.id
     m.status = "ready"
     audit(db, user, "toss.confirm", "match", m.id, after={"winner": toss.winner_team_id, "decision": toss.decision})
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 # ---------- match control ----------
@@ -176,8 +177,7 @@ async def start_match(match_id: int, user: User = Depends(get_current_user),
     inns = await get_innings(db, m.id)
     inns[0].status = "active"
     m.status = "innings1"
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/innings/next", status_code=204)
@@ -191,8 +191,7 @@ async def next_innings(match_id: int, user: User = Depends(get_current_user),
     inns = await get_innings(db, m.id)
     inns[1].status = "active"
     m.status = "innings2"
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 async def _set_paused(db: AsyncSession, match_id: int, user: User, paused: bool) -> None:
@@ -202,8 +201,7 @@ async def _set_paused(db: AsyncSession, match_id: int, user: User, paused: bool)
         raise HTTPException(409, "Only a live match can be paused")
     m.paused = paused
     audit(db, user, "match.pause" if paused else "match.resume", "match", m.id)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/pause", status_code=204)
@@ -250,8 +248,7 @@ async def over_start(match_id: int, body: OverStartIn, user: User = Depends(get_
     over = Over(innings_id=inn.id, number=number, over_type=rules.over_type(number),
                 bowler_id=body.bowler_id, batter_id=body.batter_id)
     db.add(over)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
     return {"number": number, "over_type": over.over_type, "state": over.state}
 
 
@@ -275,8 +272,7 @@ async def over_signal(match_id: int, user: User = Depends(get_current_user),
         raise HTTPException(409, "Signal already sent")
     over.state = "submissions_open"
     over.deadline_at = datetime.now(UTC) + timedelta(seconds=rules.submission_seconds)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 class SubmitIn(BaseModel):
@@ -329,8 +325,7 @@ async def submit_digits(match_id: int, body: SubmitIn, user: User = Depends(get_
         raise HTTPException(409, "You already submitted and locked your digits")
     await _store(db, over, role, user.id, digits)
     try:
-        touch(m)
-        await db.commit()
+        await commit_match(db, m)
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(409, "Duplicate submission") from e
@@ -363,8 +358,7 @@ async def override_digits(match_id: int, body: OverrideIn, user: User = Depends(
     else:
         await _store(db, over, body.role, owner, digits, by=user.id)
     audit(db, user, "digits.override", "over", over.id, body.reason, before, {"role": body.role})
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/overs/current/lock", status_code=204)
@@ -381,8 +375,7 @@ async def over_lock(match_id: int, user: User = Depends(get_current_user),
     if missing:
         raise HTTPException(409, f"Still waiting for: {', '.join(missing)} (use override if absent)")
     over.state = "locked"
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/overs/current/reveal", status_code=204)
@@ -395,8 +388,7 @@ async def over_reveal(match_id: int, user: User = Depends(get_current_user),
     if over.state != "locked":
         raise HTTPException(409, "Lock the submissions first")
     over.state = "revealed"
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 @router.post("/matches/{match_id}/overs/current/resolve")
@@ -422,8 +414,7 @@ async def over_resolve(match_id: int, user: User = Depends(get_current_user),
     over.state = "resolved"
     await db.flush()
     await recompute(db, m, rules)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
     return {"balls": len(new), "match_status": m.status, "result": m.result_text}
 
 
@@ -472,8 +463,7 @@ async def add_penalty(match_id: int, body: PenaltyIn, user: User = Depends(get_c
     audit(db, user, "penalty.apply", "penalty", pen.id, body.reason,
           after={"team": body.team_id, "runs": body.runs, "wickets": body.wickets})
     await recompute(db, m, rules)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
     return {"id": pen.id, "duplicate": False, "match_status": m.status}
 
 
@@ -497,8 +487,7 @@ async def void_penalty(match_id: int, penalty_id: int, body: VoidIn,
     audit(db, user, "penalty.void", "penalty", pen.id, body.reason)
     await db.flush()
     await _guard_and_recompute(db, m, rules)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
 
 
 # ---------- corrections ----------
@@ -548,6 +537,5 @@ async def correct_ball(match_id: int, body: CorrectIn, user: User = Depends(get_
           {"batter": ev.batter_digit, "bowler": ev.bowler_digit, "runs": ev.runs})
     await db.flush()
     await _guard_and_recompute(db, m, rules)
-    touch(m)
-    await db.commit()
+    await commit_match(db, m)
     return {"revision": ev.revision, "match_status": m.status, "result": m.result_text}

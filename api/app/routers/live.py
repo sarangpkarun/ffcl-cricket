@@ -45,14 +45,15 @@ async def live(match_id: int, user: User = Depends(get_current_user),
     rules = await load_rules(db, m)
     official = m.umpire_id == user.id or await is_admin(db, user)
     teams = {t.id: t for t in await db.scalars(select(Team).where(Team.id.in_([m.team_a_id, m.team_b_id])))}
-    names = {u.id: u.name for u in await db.scalars(select(User))}  # small league: fine for now
 
     toss = await db.scalar(select(Toss).where(Toss.match_id == m.id))
     inns = await get_innings(db, m.id)
     current: dict | None = None
     cards = []
-    for inn in inns:
-        balls, pens = await engine_inputs(db, inn)
+    loaded = [(inn, *await engine_inputs(db, inn)) for inn in inns]
+    ids = {x for _, balls, _ in loaded for b in balls for x in (b.batter_id, b.bowler_id) if x}
+    names = {u.id: u.name for u in await db.scalars(select(User).where(User.id.in_(ids)))} if ids else {}
+    for inn, balls, pens in loaded:
         s = summarize_innings(balls, pens, rules, inn.target)
         counted = list(s.counted_balls)
         bat = batting_stats(counted)

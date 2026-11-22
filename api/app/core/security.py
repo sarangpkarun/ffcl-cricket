@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -20,6 +21,15 @@ def verify_password(pw: str, hashed: str) -> bool:
         return _ph.verify(hashed, pw)
     except VerifyMismatchError:
         return False
+
+
+async def hash_password_async(pw: str) -> str:
+    """argon2 is deliberately slow; run it off the event loop so live matches never stall."""
+    return await asyncio.to_thread(hash_password, pw)
+
+
+async def verify_password_async(pw: str, hashed: str) -> bool:
+    return await asyncio.to_thread(verify_password, pw, hashed)
 
 
 def sha256(value: str) -> str:
