@@ -28,6 +28,7 @@ KINDS: dict[str, tuple[str, bool]] = {
     "fixture_change": ("One of my matches is rescheduled", True),
     "adjustment": ("My team's points are adjusted", True),
     "duty": ("An umpire duty is recorded as missed", True),
+    "award": ("I am named player of the match", True),
 }
 
 

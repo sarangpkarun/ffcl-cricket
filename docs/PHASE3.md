@@ -68,7 +68,7 @@ Defaults I chose (tell me if any are wrong; each is a setting):
 - Admin **Points adjustments** screen (add, list, void).
 - **Exit:** a walkover, an abandoned match and a missed duty each change the table exactly as configured and can be reversed.
 
-### Sprint 12: Statistics and leaderboards (week 4)
+### Sprint 12: Statistics and leaderboards (week 4) ✅ done
 - `services/stats.py`: batting (runs, balls, 4s, 6s, strike rate, highest score, innings, dismissals), bowling (balls, runs, wickets, economy, best figures), team (win %, NRR), all from the latest ball revisions of normal-result matches, with the qualifier thresholds.
 - Leaderboards: most runs, most wickets, highest score, best strike rate, best economy, most sixes, most fours, most player-of-the-match awards, best win percentage; filters by season, team and player.
 - Player of the match: umpire/admin picks (with suggestion); migration 0008 table.
@@ -161,3 +161,21 @@ Tests: 11 new API tests (walkover effects and validation, reversal, abandonment 
 Deliberate limits:
 - A match in progress can be abandoned but not given a walkover.
 - A walkover reversed after other results depended on it is only blocked by the final-started rule; there is no wider dependency check.
+
+## Sprint 12 outcome
+Built:
+- **Statistics engine** (`engine/leaderboards.py`, pure) and loader (`services/stats.py`). Every figure is derived on each request from the ball events: nothing is stored or cached, so a corrected ball, a voided penalty or a changed result shows up immediately. Innings are summarised by the same engine as the scorecard (same counted balls), so **player runs always add up to the team total minus penalties**; a test checks this after a penalty and after a correction. Only matches whose ledger result is normal or tie count; walkovers and abandoned matches have no balls.
+- **Per player**: matches, innings, runs, balls, fours, sixes, strike rate, highest score, average, dismissals, not outs; overs, wickets, runs conceded, economy, best figures; player-of-the-match awards.
+- **Leaderboards** `GET /seasons/{id}/leaderboards` (filters: team, limit): most runs, most wickets, highest score, best strike rate (12 balls faced), best economy (12 balls bowled), most sixes, most fours, most awards, best team win percentage (a tie counts half). The two qualifiers are `stats.min_balls_strike_rate` and `stats.min_balls_economy` in the rule set. Equal values share a rank and the order is total (it never depends on the order data arrives; tested by shuffling).
+- **Player page** `GET /players/{id}/stats` (season or career): totals, per-season breakdown, and match history newest first (opponent, win or loss, batting and bowling line, award). **Team page block** `GET /teams/{id}/stats`: table position and record, win percentage, best batter, bowler and highest score, and every player's totals. A player who changes team keeps the stats for the team they played for in each match.
+- **Player of the match** `GET/PUT /matches/{id}/potm`: only the match umpire or an admin may choose, only once the match has a normal or tied result, and only a player from that match. Officials see a shortlist with a suggestion (runs plus 10 per wicket; ties go to fewer balls used, then the lower id); everyone sees the winner. Choosing posts a line in the match chat, notifies the player (new "award" notification kind), is audited, and can be changed (the old winner loses the award). The live view carries `match.potm`.
+- **Screens**: Stats tab in the bottom navigation (the **Leaderboards** page with season and team filters), **Player** page (linked from leaderboards, the team roster and the award), a statistics block on the team page, and a player-of-the-match panel on finished matches.
+- Migration 0009 (`match_awards`). Existing seasons need nothing: statistics derive from existing balls.
+
+Tests: 7 engine tests (totals, highest score, best figures, qualifiers, shared ranks, order independence, suggestion) and 8 API tests (leaderboards, qualifiers, team filter, walkovers and abandonments excluded, reconciliation after a penalty and a correction, player page, team stats, the full player-of-the-match flow including permissions), plus one browser test.
+
+Decisions and limits:
+- Not cached: a season is a few thousand balls, so the on-demand query is cheap. If a season ever grows large, add a short-lived cache keyed by the latest match sequence number.
+- A penalty positioned after the point an innings ended (for example because a correction made the innings end earlier) is not applied. That is existing engine behaviour and stats follow it.
+- Knockout matches count toward player statistics (and awards) but not toward the league table.
+- Roster transfers (Sprint 13) will not change past statistics; this sprint already attributes each match to the team the player played for.

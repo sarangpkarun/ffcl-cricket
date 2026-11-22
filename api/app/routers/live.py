@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Match, Over, Penalty, Team, Toss, User
+from app.db.models import Match, MatchAward, Over, Penalty, Team, Toss, User
 from app.db.session import get_session
 from app.deps import get_current_user, is_admin
 from app.engine import BAT, BOWL, batting_stats, bowling_stats, summarize_innings
@@ -90,11 +90,14 @@ async def live(match_id: int, user: User = Depends(get_current_user),
             if over:
                 current = await over_view(db, over, user, official)
     decl = await active_declaration(db, m.id)
+    potm = await db.scalar(select(User).join(MatchAward, MatchAward.user_id == User.id)
+                           .where(MatchAward.match_id == m.id, MatchAward.kind == "potm"))
     return {
         "match": {"id": m.id, "match_no": m.match_no, "status": m.status, "paused": m.paused,
                   "seq": m.seq, "result": m.result_text, "winner_team_id": m.winner_team_id,
                   "umpire_id": m.umpire_id, "overs": rules.overs, "wickets": rules.wickets,
                   "teams": {str(i): t.name for i, t in teams.items()},
+                  "potm": {"id": potm.id, "name": potm.name} if potm else None,
                   "team_a_id": m.team_a_id, "team_b_id": m.team_b_id,
                   "declared": {"kind": decl.kind, "reason": decl.reason, "absent_team_id": decl.absent_team_id,
                                "replay_match_id": decl.replay_match_id} if decl else None},

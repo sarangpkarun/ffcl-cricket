@@ -22,6 +22,7 @@ DEFAULT_RULES: dict[str, Any] = {
     "points": {"win": 2, "tie": 1, "loss": 0, "walkover_win": 2, "walkover_loss": 0, "no_result": 1, "abandoned": 1},
     "tiebreakers": ["points", "nrr", "wins", "head_to_head", "name"],
     "knockout": {"qualifiers": 4, "tie": "higher_seed"},
+    "stats": {"min_balls_strike_rate": 12, "min_balls_economy": 12},  # qualifiers for the rate leaderboards
     "umpire_duty_penalty": 1,  # points a team loses when the umpire it supplied does not turn up
 }
 

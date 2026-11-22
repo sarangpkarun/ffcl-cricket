@@ -176,6 +176,7 @@ export type Live = {
     teams: Record<string, string>;
     team_a_id: number;
     team_b_id: number;
+    potm?: { id: number; name: string } | null;
     declared?: { kind: "walkover" | "abandoned"; reason: string; absent_team_id: number | null; replay_match_id: number | null } | null;
   };
   you: { official: boolean };

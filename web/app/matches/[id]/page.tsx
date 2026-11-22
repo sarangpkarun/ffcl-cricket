@@ -6,6 +6,7 @@ import { ChatRoom } from "@/components/chat/ChatRoom";
 import { PlayerPanel } from "@/components/match/PlayerPanel";
 import { Scoreboard } from "@/components/match/Scoreboard";
 import { TossPanel } from "@/components/match/TossPanel";
+import { PotmPanel } from "@/components/match/PotmPanel";
 import { UmpireConsole } from "@/components/match/UmpireConsole";
 import { UserSearch } from "@/components/UserSearch";
 import { btnCls, btnGhost, ErrorText, RequireAuth } from "@/components/ui-bits";
@@ -106,6 +107,7 @@ function MatchPage() {
       {live.over && live.over.your_role && live.over.state !== "resolved" && (
         <PlayerPanel matchId={match.id} over={live.over} battingTeam={battingName} onDone={done} />
       )}
+      {live.match.status === "completed" && <PotmPanel matchId={match.id} seq={live.match.seq} />}
       <TossPanel live={live} myTeamIds={myTeamIds} onDone={done} />
       {official && <UmpireConsole live={live} lineups={lineups} onDone={done} />}
 

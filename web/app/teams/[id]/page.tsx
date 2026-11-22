@@ -1,11 +1,36 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { UserSearch } from "@/components/UserSearch";
 import { btnCls, btnGhost, ErrorText, RequireAuth } from "@/components/ui-bits";
 import { api, del, patch, post, type TeamDetail } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+
+type TeamStats = {
+  table: { played: number; won: number; lost: number; tied: number; points: number; nrr: number; position: number } | null;
+  win_pct: number | null;
+  best: Record<string, { player: { id: number; name: string } | null; value: number; detail: string } | null>;
+  players: { player: { id: number; name: string } | null; runs: number; wickets: number; matches: number }[];
+};
+const BEST = { most_runs: "Most runs", most_wickets: "Most wickets", highest_score: "Highest score" };
+
+function StatsBlock({ id }: { id: string }) {
+  const [s, setS] = useState<TeamStats | null>(null);
+  useEffect(() => { api<TeamStats>(`/teams/${id}/stats`).then(setS).catch(() => {}); }, [id]);
+  if (!s || !s.table || s.table.played === 0) return null;
+  const t = s.table;
+  return (
+    <section aria-label="Team statistics" className="space-y-2 rounded-lg border p-3 text-sm">
+      <h2 className="font-medium">Season statistics</h2>
+      <p>#{t.position} · P{t.played} W{t.won} L{t.lost}{t.tied ? ` T${t.tied}` : ""} · {t.points} pts · NRR {t.nrr >= 0 ? "+" : ""}{t.nrr.toFixed(3)} · Win {s.win_pct}%</p>
+      <ul className="space-y-1">
+        {Object.entries(BEST).map(([k, label]) => { const b = s.best[k]; return b?.player && <li key={k}>{label}: <Link className="underline" href={`/players/${b.player.id}`}>{b.player.name}</Link> {b.value} <span className="text-xs text-muted-foreground">({b.detail})</span></li>; })}
+      </ul>
+    </section>
+  );
+}
 
 function TeamPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,12 +57,13 @@ function TeamPage() {
       </h1>
       <p className="text-sm text-muted-foreground">{approved}/7 players</p>
       <ErrorText msg={err} />
+      <StatsBlock id={id} />
 
       <ul className="space-y-2">
         {team.members.map((m) => (
           <li key={m.user_id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
             <span>
-              {m.name} <span className="text-muted-foreground">{m.player_code}</span>
+              <Link href={`/players/${m.user_id}`} className="underline">{m.name}</Link> <span className="text-muted-foreground">{m.player_code}</span>
               {team.captain_id === m.user_id && " ©"}
               {m.status === "pending" && " (pending)"}
             </span>

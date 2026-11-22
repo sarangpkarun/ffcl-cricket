@@ -431,3 +431,16 @@ class UmpireDuty(Base):
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     adjustment_id: Mapped[int | None] = mapped_column(ForeignKey("point_adjustments.id"))
+
+
+class MatchAward(Base):
+    """Player of the match. One per match and kind; choosing again replaces it."""
+
+    __tablename__ = "match_awards"
+    __table_args__ = (UniqueConstraint("match_id", "kind"),)
+    id: Mapped[int] = _pk()
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(10), default="potm")
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    chosen_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    chosen_at: Mapped[datetime] = _now()
