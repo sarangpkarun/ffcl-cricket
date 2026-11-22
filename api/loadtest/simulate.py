@@ -9,43 +9,19 @@ Needs the stack running (`make up`, `make migrate`). Creates its own users/seaso
 import argparse
 import asyncio
 import json
-import statistics
 import time
-from collections import defaultdict
 
 import httpx
 import websockets
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 
-from app.create_admin import main as create_admin
 from app.db.models import BallEvent, Innings, Match
 from app.db.session import SessionLocal
+from loadtest.world import Stats, build_world, report
 
-PW = "password123"
 BAT = "561234"
 BOWL = "652143"  # never equals BAT on any ball: 21 runs per over
 BOWL_WKT = "652144"  # last ball equals the batter's 4: a wicket
-
-
-class Stats:
-    def __init__(self) -> None:
-        self.lat: dict[str, list[float]] = defaultdict(list)
-        self.errors: list[str] = []
-        self.expected_conflicts = 0
-
-    async def call(self, c: httpx.AsyncClient, name: str, method: str, url: str, token: str,
-                   expect: tuple[int, ...] = (200, 201, 204), **kw) -> httpx.Response:
-        t = time.perf_counter()
-        r = await c.request(method, url, headers={"Authorization": f"Bearer {token}"}, **kw)
-        self.lat[name].append((time.perf_counter() - t) * 1000)
-        if r.status_code not in expect:
-            self.errors.append(f"{name} {r.status_code} {r.text[:120]}")
-        return r
-
-
-def pct(xs: list[float], p: float) -> float:
-    s = sorted(xs)
-    return s[min(len(s) - 1, int(len(s) * p))]
 
 
 async def watcher(url: str, token: str, ready: asyncio.Event, out: dict) -> None:
@@ -61,15 +37,6 @@ async def watcher(url: str, token: str, ready: asyncio.Event, out: dict) -> None
                     out["seqs"].append(m["seq"])
         except websockets.ConnectionClosed:
             return
-
-
-async def register(c: httpx.AsyncClient, st: Stats, prefix: str, n: int, label: str) -> dict:
-    email = f"{prefix}{n}@t.io"
-    r = await st.call(c, "register", "POST", "/auth/register", "x", json={
-        "name": f"{label}{n}", "email": email, "password": PW, "phone": f"+9188{prefix[-6:]}{n:04d}"})
-    tok = r.json()["access_token"]
-    me = (await c.get("/me", headers={"Authorization": f"Bearer {tok}"})).json()
-    return {"id": me["id"], "token": tok, "email": email}
 
 
 async def play_match(c: httpx.AsyncClient, st: Stats, mid: int, ump: dict, A: list, B: list,
@@ -121,37 +88,11 @@ async def play_match(c: httpx.AsyncClient, st: Stats, mid: int, ump: dict, A: li
 
 
 async def main(n_matches: int, watchers: int, api: str, chaos: bool) -> int:
-    prefix = f"load{int(time.time())}"
-    admin_email = f"{prefix}root@t.io"
-    await create_admin(admin_email, PW, "Load Admin")
     st = Stats()
     limits = httpx.Limits(max_connections=200, keepalive_expiry=2)  # < uvicorn's 5s keep-alive
     async with httpx.AsyncClient(base_url=api, timeout=60, limits=limits) as c:
-        admin = (await c.post("/auth/login", json={"email": admin_email, "password": PW})).json()["access_token"]
-        season = (await st.call(c, "setup", "POST", "/seasons", admin, json={"name": f"Load {prefix}", "status": "active"})).json()["id"]
-        print(f"registering {n_matches * 9} users...")
-        users = await asyncio.gather(*[register(c, st, prefix, i, "P") for i in range(n_matches * 9)])
-        async with SessionLocal() as s:
-            await s.execute(text("update users set phone_verified=true where email like :p"), {"p": f"{prefix}%"})
-            await s.commit()
-        plans = []
-        for i in range(n_matches):
-            chunk = users[i * 9:(i + 1) * 9]
-            ump, A, B = chunk[0], chunk[1:5], chunk[5:9]
-            await st.call(c, "setup", "POST", f"/users/{ump['id']}/roles", admin, json={"role": "umpire"})
-            tids = []
-            for name, players in ((f"Pink{i}", A), (f"Green{i}", B)):
-                t = (await st.call(c, "setup", "POST", f"/seasons/{season}/teams", admin, json={"name": name})).json()["id"]
-                for p in players:
-                    await st.call(c, "setup", "POST", f"/teams/{t}/members", admin, json={"user_id": p["id"]})
-                await st.call(c, "setup", "PATCH", f"/teams/{t}", admin, json={"captain_id": players[0]["id"]})
-                tids.append(t)
-            m = (await st.call(c, "setup", "POST", f"/seasons/{season}/matches", admin,
-                               json={"team_a_id": tids[0], "team_b_id": tids[1], "umpire_id": ump["id"]})).json()["id"]
-            for tid, players in ((tids[0], A), (tids[1], B)):
-                await st.call(c, "setup", "PUT", f"/matches/{m}/lineup", admin, json={"team_id": tid, "user_ids": [p["id"] for p in players]})
-            plans.append((m, ump, A, B, tids[0], tids[1]))
-
+        print(f"building a league of {n_matches} matches...")
+        plans = (await build_world(c, st, n_matches))["plans"]
         print(f"playing {n_matches} matches at once ({watchers} websocket watchers each, chaos={chaos})...")
         ws_base = api.replace("http", "ws", 1)
         t0 = time.perf_counter()
@@ -179,12 +120,7 @@ async def main(n_matches: int, watchers: int, api: str, chaos: bool) -> int:
                 if seqs != sorted(seqs):
                     problems.append(f"match {m} watcher {k}: sequence went backwards")
 
-    allv = [x for v in st.lat.values() for x in v]
-    print(f"\n{len(allv)} requests in {wall:.1f}s  ({len(allv) / wall:.0f} req/s)  conflicts expected: {st.expected_conflicts}")
-    print(f"{'endpoint':<12}{'n':>6}{'p50':>8}{'p95':>8}{'p99':>8}{'max':>8}   (ms)")
-    for k, v in sorted(st.lat.items()):
-        print(f"{k:<12}{len(v):>6}{statistics.median(v):>8.0f}{pct(v, .95):>8.0f}{pct(v, .99):>8.0f}{max(v):>8.0f}")
-    print(f"{'ALL':<12}{len(allv):>6}{statistics.median(allv):>8.0f}{pct(allv, .95):>8.0f}{pct(allv, .99):>8.0f}{max(allv):>8.0f}")
+    report(st, wall)
     if problems:
         print(f"\nFAILED: {len(problems)} problem(s)")
         for p in problems[:25]:

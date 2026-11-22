@@ -1,11 +1,15 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import redis.asyncio as aioredis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.core.config import settings
+from app.core.config import assert_production_safe, settings
 from app.db.session import engine
 from app.routers import (
+    admin_users,
     auth,
     chat,
     live,
@@ -21,7 +25,14 @@ from app.routers import (
     ws_rooms,
 )
 
-app = FastAPI(title="FFCL API")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    assert_production_safe(settings)
+    yield
+
+
+app = FastAPI(title="FFCL API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins.split(","),
@@ -29,7 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation,
-          notifications, ws_me):
+          notifications, ws_me, admin_users):
     app.include_router(r.router)
 
 

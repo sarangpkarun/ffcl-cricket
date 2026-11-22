@@ -135,3 +135,9 @@ async def ws_url():
     yield f"ws://127.0.0.1:{port}"
     server.should_exit = True
     await task
+
+
+@pytest.fixture(autouse=True)
+def _auth_limits_off(monkeypatch):
+    """Most tests register dozens of users from one address; the limits have their own tests."""
+    monkeypatch.setattr(settings, "auth_rate_limits_enabled", False)

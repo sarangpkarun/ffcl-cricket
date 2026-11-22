@@ -181,16 +181,18 @@ async def send_message(room_id: int, body: SendIn, user: User = Depends(get_curr
     extra = await _validated_extras(db, room, user, body)
     msg = ChatMessage(room_id=room.id, sender_id=user.id, body=body.body, client_id=body.client_id,
                       **({"kind": "user"} | extra))
+    # rollback() expires every loaded object, so keep plain values for the recovery path below
+    room_id_, user_id_, client_id_ = room.id, user.id, body.client_id
     db.add(msg)
     try:
         await db.flush()
         await _notify_message(db, room, user, msg, body)
         await db.commit()
-    except IntegrityError:  # two identical retries raced; return the winner
+    except IntegrityError:  # two identical sends raced (a double tap): return the one that won
         await db.rollback()
         winner = await db.scalar(select(ChatMessage).where(
-            ChatMessage.room_id == room.id, ChatMessage.sender_id == user.id,
-            ChatMessage.client_id == body.client_id))
+            ChatMessage.room_id == room_id_, ChatMessage.sender_id == user_id_,
+            ChatMessage.client_id == client_id_))
         if winner:
             return (await svc.messages_out(db, [winner]))[0]
         raise
@@ -260,20 +262,23 @@ async def toggle_reaction(room_id: int, message_id: int, body: ReactIn,
         raise HTTPException(409, "Message was deleted")
     if not await allow(f"rl:react:{room.id}:{user.id}", 30, 10):
         raise HTTPException(429, "Slow down")
+    room_id_, msg_id, user_id_ = room.id, msg.id, user.id  # rollback() would expire the objects
     mine = await db.scalar(select(MessageReaction).where(
-        MessageReaction.message_id == msg.id, MessageReaction.user_id == user.id,
+        MessageReaction.message_id == msg_id, MessageReaction.user_id == user_id_,
         MessageReaction.emoji == body.emoji))
     if mine:
         await db.delete(mine)
     else:
-        db.add(MessageReaction(message_id=msg.id, user_id=user.id, emoji=body.emoji))
+        db.add(MessageReaction(message_id=msg_id, user_id=user_id_, emoji=body.emoji))
     try:
         await db.commit()
     except IntegrityError:  # double tap raced: the reaction already exists, which is the intent
         await db.rollback()
-    reactions = (await svc.messages_out(db, [msg]))[0]["reactions"]
-    await publish_room(room.id, {"type": "reaction", "message_id": msg.id, "reactions": reactions})
-    return {"message_id": msg.id, "reactions": reactions}
+    fresh = await db.get(ChatMessage, msg_id)
+    assert fresh is not None
+    reactions = (await svc.messages_out(db, [fresh]))[0]["reactions"]
+    await publish_room(room_id_, {"type": "reaction", "message_id": msg_id, "reactions": reactions})
+    return {"message_id": msg_id, "reactions": reactions}
 
 
 async def _set_pin(db: AsyncSession, room_id: int, message_id: int, user: User, pinned: bool) -> dict:

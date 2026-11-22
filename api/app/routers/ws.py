@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import json
+import logging
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 
@@ -11,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_access_token
 from app.db.models import Match, Session, User
 from app.db.session import SessionLocal, get_session
-from app.realtime import channel, client
+from app.realtime import channel, new_pubsub
 
+log = logging.getLogger("ffcl.ws")
 router = APIRouter()
 PING_SECONDS = 25
 AUTH_TIMEOUT_SECONDS = 5
@@ -70,6 +72,14 @@ async def session_alive(db: AsyncSession, session_id: int, user_id: int) -> User
     return user if user and user.status == "active" else None
 
 
+def log_task_failures(name: str, tasks: list[asyncio.Task]) -> None:
+    """A socket's helper task that crashes ends the socket; say why instead of failing silently."""
+    for t in tasks:
+        if t.done() and not t.cancelled() and (exc := t.exception()) is not None \
+                and not isinstance(exc, WebSocketDisconnect):  # a client leaving is normal, not a failure
+            log.error("%s socket task failed: %r", name, exc, exc_info=exc)
+
+
 @router.websocket("/ws/matches/{match_id}")
 async def match_socket(ws: WebSocket, match_id: int) -> None:
     await ws.accept()
@@ -83,7 +93,7 @@ async def match_socket(ws: WebSocket, match_id: int) -> None:
             await ws.close(code=4401 if not auth else 4404)
         return
 
-    pubsub = client().pubsub()
+    pubsub = new_pubsub()
     tasks: list[asyncio.Task] = []
     try:
         await pubsub.subscribe(channel(match_id))
@@ -109,6 +119,7 @@ async def match_socket(ws: WebSocket, match_id: int) -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        log_task_failures("match", tasks)
         for t in tasks:
             t.cancel()
         with contextlib.suppress(Exception):

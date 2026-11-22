@@ -16,7 +16,20 @@ import redis.asyncio as aioredis
 from app.core.config import settings
 
 log = logging.getLogger("ffcl.realtime")
+
+# redis-py caps a pool at 100 connections unless told otherwise, and every open WebSocket holds a
+# dedicated subscription connection. Sharing one pool let a few hundred sockets starve ordinary
+# commands (publishing, rate limits, presence) and each other, so they get separate pools:
+#  - commands share a bounded pool and WAIT for a free connection instead of failing;
+#  - subscriptions get their own large pool; Redis' own `maxclients` is the real ceiling.
+COMMAND_CONNECTIONS = 100
+COMMAND_WAIT_SECONDS = 15
+SUBSCRIBER_CONNECTIONS = 20_000
+
 _clients: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, aioredis.Redis]" = (
+    weakref.WeakKeyDictionary()
+)
+_subscribers: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, aioredis.Redis]" = (
     weakref.WeakKeyDictionary()
 )
 
@@ -26,13 +39,25 @@ def channel(match_id: int) -> str:
 
 
 def client() -> aioredis.Redis:
-    """One Redis client per event loop (tests run each test on its own loop)."""
+    """Shared client for ordinary commands. One per event loop (tests run each test on its own loop)."""
     loop = asyncio.get_running_loop()
     c = _clients.get(loop)
     if c is None:
-        c = aioredis.from_url(settings.redis_url)
+        pool = aioredis.BlockingConnectionPool.from_url(
+            settings.redis_url, max_connections=COMMAND_CONNECTIONS, timeout=COMMAND_WAIT_SECONDS)
+        c = aioredis.Redis(connection_pool=pool)
         _clients[loop] = c
     return c
+
+
+def new_pubsub() -> "aioredis.client.PubSub":
+    """A subscription for one WebSocket, on the dedicated subscriber pool."""
+    loop = asyncio.get_running_loop()
+    c = _subscribers.get(loop)
+    if c is None:
+        c = aioredis.from_url(settings.redis_url, max_connections=SUBSCRIBER_CONNECTIONS)
+        _subscribers[loop] = c
+    return c.pubsub()
 
 
 async def publish_change(match_id: int, seq: int) -> None:

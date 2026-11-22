@@ -21,6 +21,9 @@ KINDS: dict[str, tuple[str, bool]] = {
     "announcement": ("Announcements", True),
     "mention": ("Someone mentions me", True),
     "reply": ("Someone replies to me", True),
+    "match_reminder": ("A match of mine is about to start", True),
+    "toss_reminder": ("The toss is due and nobody has opened it", True),
+    "deadline_alert": ("My submission deadline is close", True),
 }
 
 

@@ -23,6 +23,14 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
+  worker:
+    build: ./api
+    env_file: .env
+    command: ["arq", "app.worker.WorkerSettings", "--watch", "app"]
+    volumes: ["./api:/app", "/app/.venv"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
   web:
     build: ./web
     env_file: .env

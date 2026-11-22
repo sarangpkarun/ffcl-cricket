@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -284,8 +284,17 @@ async def over_signal(match_id: int, user: User = Depends(get_current_user),
     await commit_match(db, m)
 
 
+def _digits_shape(v: str | list[int]) -> str | list[int]:
+    """Cheap size check before parsing: six digits, or the same as emoji / spaced text."""
+    if (isinstance(v, str) and len(v) > 40) or (isinstance(v, list) and len(v) > 6):
+        raise ValueError("Digits are too long")
+    return v
+
+
 class SubmitIn(BaseModel):
     digits: str | list[int]
+
+    _shape = field_validator("digits")(_digits_shape)
 
 
 async def _store(db: AsyncSession, over: Over, role: str, user_id: int, digits: list[int],
@@ -344,7 +353,9 @@ async def submit_digits(match_id: int, body: SubmitIn, user: User = Depends(get_
 class OverrideIn(BaseModel):
     role: str = Field(pattern=r"^(bat|bowl)$")
     digits: str | list[int]
-    reason: str = Field(min_length=3)
+    reason: str = Field(min_length=3, max_length=500)
+
+    _shape = field_validator("digits")(_digits_shape)
 
 
 @router.post("/matches/{match_id}/overs/current/override", status_code=204)
@@ -437,7 +448,7 @@ class PenaltyIn(BaseModel):
     kind: str = Field(min_length=2, max_length=40)
     runs: int = 0
     wickets: int = Field(default=0, ge=0)
-    reason: str = Field(min_length=3)
+    reason: str = Field(min_length=3, max_length=500)
     idempotency_key: str = Field(min_length=4, max_length=64)
 
 
@@ -484,7 +495,7 @@ async def add_penalty(match_id: int, body: PenaltyIn, user: User = Depends(get_c
 
 
 class VoidIn(BaseModel):
-    reason: str = Field(min_length=3)
+    reason: str = Field(min_length=3, max_length=500)
 
 
 @router.post("/matches/{match_id}/penalties/{penalty_id}/void", status_code=204)
@@ -516,7 +527,7 @@ class CorrectIn(BaseModel):
     ball_no: int = Field(ge=1, le=6)
     batter_digit: int = Field(ge=1, le=6)
     bowler_digit: int = Field(ge=1, le=6)
-    reason: str = Field(min_length=3)
+    reason: str = Field(min_length=3, max_length=500)
 
 
 async def _guard_and_recompute(db: AsyncSession, m: Match, rules: RuleConfig) -> Recomputed | None:

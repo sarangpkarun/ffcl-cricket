@@ -5,8 +5,8 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.db.models import ChatRoom
-from app.realtime import client, publish_room, room_channel
-from app.routers.ws import authenticate, receive_token, session_alive, ws_db
+from app.realtime import new_pubsub, publish_room, room_channel
+from app.routers.ws import authenticate, log_task_failures, receive_token, session_alive, ws_db
 from app.services import chat as svc
 from app.services import presence
 from app.services.ratelimit import allow
@@ -34,7 +34,7 @@ async def room_socket(ws: WebSocket, room_id: int) -> None:
     user, session_id = auth
     me = {"id": user.id, "name": user.name}
 
-    pubsub = client().pubsub()
+    pubsub = new_pubsub()
     tasks: list[asyncio.Task] = []
     try:
         await pubsub.subscribe(room_channel(room_id))
@@ -84,6 +84,7 @@ async def room_socket(ws: WebSocket, room_id: int) -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        log_task_failures("room", tasks)
         for t in tasks:
             t.cancel()
         with contextlib.suppress(Exception):

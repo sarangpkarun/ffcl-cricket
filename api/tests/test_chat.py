@@ -200,3 +200,28 @@ async def test_room_info(make_user, db):
     assert (await who["player"].req("GET", f"/rooms/{r['match']}")).json()["moderator"] is False
     assert (await who["player"].req("GET", f"/rooms/{r['umpire']}")).status_code == 404
     assert (await who["player"].req("GET", "/rooms/999999")).status_code == 404
+
+
+async def test_simultaneous_identical_sends_collapse_to_one_message(make_user, db):
+    """A double tap or client retry arrives twice at once: both succeed with the same message."""
+    import asyncio
+
+    _ctx, r, who = await world(make_user, db)
+    room, c = r["match"], cid()
+    rs = await asyncio.gather(*[
+        who["player"].req("POST", f"/rooms/{room}/messages", json={"body": "tap tap", "client_id": c}) for _ in range(8)])
+    assert [x.status_code for x in rs] == [201] * 8
+    assert len({x.json()["id"] for x in rs}) == 1
+    assert await db.scalar(select(func.count()).select_from(ChatMessage).where(ChatMessage.room_id == room)) == 1
+
+
+async def test_simultaneous_reaction_taps_never_error(make_user, db):
+    import asyncio
+
+    _ctx, r, who = await world(make_user, db)
+    m = (await who["player"].req("POST", f"/rooms/{r['match']}/messages", json={"body": "nice", "client_id": cid()})).json()
+    rs = await asyncio.gather(*[
+        who["opponent"].req("POST", f"/rooms/{r['match']}/messages/{m['id']}/reactions", json={"emoji": "🔥"}) for _ in range(6)])
+    assert all(x.status_code == 200 for x in rs)  # some add, some remove, none crash
+    final = (await who["player"].req("GET", f"/rooms/{r['match']}/messages")).json()["messages"][0]["reactions"]
+    assert final in ({}, {"🔥": [who["opponent"].id]})

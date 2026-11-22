@@ -89,6 +89,9 @@ export function useRoom(roomId: number, myId: number) {
           take(p.messages);
           if (!p.has_more) break;
         }
+        // Simultaneous senders can commit slightly out of id order, so a message with an id just
+        // below my highest may not have reached me yet. Re-read the newest page to catch those.
+        take((await api<Page>(`/rooms/${roomId}/messages?limit=50`)).messages);
       }
       setPinned(await api<ChatMsg[]>(`/rooms/${roomId}/pinned`));
       const rs = await api<{ user_id: number; name: string; last_read_id: number }[]>(`/rooms/${roomId}/reads`);

@@ -2,7 +2,7 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +11,7 @@ from app.core import otp
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
+    hash_password,
     hash_password_async,
     new_refresh_token,
     sha256,
@@ -30,8 +31,26 @@ from app.schemas import (
     TokenOut,
     UserOut,
 )
+from app.services.ratelimit import allow
 
 router = APIRouter(tags=["auth"])
+
+# Hashing a throwaway password for unknown emails makes a failed login take as long as a wrong
+# password for a real account, so response time does not reveal who has an account.
+_DUMMY_HASH = hash_password("not-a-real-password-just-for-timing")
+
+
+def client_ip(request: Request) -> str:
+    if settings.trust_proxy:
+        fwd = request.headers.get("x-forwarded-for")
+        if fwd:
+            return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def throttle(scope: str, key: str, limit: int, window_seconds: int) -> None:
+    if settings.auth_rate_limits_enabled and not await allow(f"rl:auth:{scope}:{key}", limit, window_seconds):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Please wait and try again.")
 
 
 async def _issue(db: AsyncSession, user: User, user_agent: str | None) -> TokenOut:
@@ -50,9 +69,11 @@ async def _issue(db: AsyncSession, user: User, user_agent: str | None) -> TokenO
 @router.post("/auth/register", response_model=TokenOut, status_code=201)
 async def register(
     body: RegisterIn,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     user_agent: str | None = Header(default=None),
 ) -> TokenOut:
+    await throttle("register-ip", client_ip(request), 10, 3600)
     user = User(
         player_code=uuid.uuid4().hex[:16],
         name=body.name,
@@ -74,11 +95,16 @@ async def register(
 @router.post("/auth/login", response_model=TokenOut)
 async def login(
     body: LoginIn,
+    request: Request,
     db: AsyncSession = Depends(get_session),
     user_agent: str | None = Header(default=None),
 ) -> TokenOut:
-    user = await db.scalar(select(User).where(User.email == body.email.lower()))
-    if not user or not await verify_password_async(body.password, user.password_hash):
+    email = body.email.lower()
+    await throttle("login-ip", client_ip(request), 30, 300)
+    await throttle("login-email", email, 10, 300)
+    user = await db.scalar(select(User).where(User.email == email))
+    ok = await verify_password_async(body.password, user.password_hash if user else _DUMMY_HASH)
+    if not user or not ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
     if user.status != "active":
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Account {user.status}")
@@ -130,6 +156,7 @@ async def otp_request(
 ) -> None:
     if user.phone != body.phone:
         raise HTTPException(400, "Phone must match your registered number")
+    await throttle("otp-request", str(user.id), 3, 600)  # each request may cost an SMS
     code = f"{secrets.randbelow(10**6):06d}"
     db.add(
         OtpCode(

@@ -4,9 +4,9 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.realtime import client, user_channel
+from app.realtime import new_pubsub, user_channel
 from app.routers.notifications import unread_count
-from app.routers.ws import authenticate, receive_token, session_alive, ws_db
+from app.routers.ws import authenticate, log_task_failures, receive_token, session_alive, ws_db
 
 router = APIRouter()
 RECHECK_SECONDS = 25
@@ -26,7 +26,7 @@ async def me_socket(ws: WebSocket) -> None:
         return
     user, session_id = auth
 
-    pubsub = client().pubsub()
+    pubsub = new_pubsub()
     tasks: list[asyncio.Task] = []
     try:
         await pubsub.subscribe(user_channel(user.id))
@@ -58,6 +58,7 @@ async def me_socket(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        log_task_failures("notifications", tasks)
         for t in tasks:
             t.cancel()
         with contextlib.suppress(Exception):

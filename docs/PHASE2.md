@@ -66,7 +66,7 @@ Phase 1 pieces we build on: WebSocket + Redis pub/sub (`api/app/realtime.py`, `a
 - Notifications API (`GET /notifications`, mark read, read all, unread count), bell with badge, `/notifications` page, `/ws/me`, per-kind preferences. Triggers: umpire assigned, toss ready (captains), your over has started ("submit digits now"), penalty, wicket on your team, over complete, result, announcement, mention, reply.
 - **Exit:** a full match produces a correct, readable announcement feed, and players get a notification when it is their turn to submit.
 
-### Sprint 8: Scheduling, admin users, hardening (week 4)
+### Sprint 8: Scheduling, admin users, hardening (week 4) ✅ done (toss timeout still open)
 - ARQ worker (`worker` service in compose, `api/app/worker.py`): match reminders (1 hour, 10 minutes), toss reminder, 30-second submission-deadline alert (job queued at signal time). All idempotent through the `dedupe_key`.
 - Admin user management screen: list/search users, grant/revoke roles (including tournament admin), suspend/reactivate. (Backend endpoints already exist.)
 - Toss timeout default once the rulebook rule is confirmed.
@@ -140,3 +140,21 @@ Decisions made while building:
 - Mentions and replies notify once per message (a mention wins over a reply); editing never re-notifies; you are never notified about your own messages.
 - Toasts only show for events that arrive live; anything missed while offline is picked up as unread in the bell.
 - Not done yet (Sprint 8): scheduled reminders (match start, toss, 30-second deadline alert) need the background worker.
+
+## Sprint 8 outcome
+Built:
+- **Background worker** (`worker` service, `arq app.worker.WorkerSettings`): match reminders about an hour and ten minutes ahead (a match created late only gets the reminder that still makes sense), a "match time, nobody has opened the toss" nudge to captains and the umpire, a 30-second submission-deadline alert (sent about 20-30 seconds before the deadline, only to whoever has not submitted, never while paused), and nightly clean-up of old notifications. Every job is idempotent through the notification dedupe key, so restarts, retries and several workers are safe. Verified for real in the running stack: a reminder arrived one second after the cron tick and a deadline alert reached both players 157 seconds into a 180-second over.
+- **Admin People screen** (`/admin/users`): search by name, email, phone or player ID, filter by role and status, paging, add and remove roles, suspend, ban and reactivate. Safety rules: only a super admin touches admin roles or accounts, nobody can lock themselves out, the last super admin is protected, an umpire with unfinished matches or a current captain cannot be demoted, and every change is audited.
+- **Security review** with fixes and regression tests for every finding: see `docs/SECURITY.md`. Highlights: user search leaked emails and phone numbers; login and OTP had no rate limits; production could start with the development secret.
+- **Chat load test** (`loadtest/chat_load.py`): 30 matches played at once with 240 chatting players (replies, mentions, reactions, simultaneous duplicate sends), live watchers in every room and a strict database comparison. It found two real bugs that smaller tests missed: the Redis connection pool ran dry at around 100 sockets, and two identical sends at the same instant returned HTTP 500. Both are fixed. Result: 1,440 messages stored, 240 duplicate sends collapsed, every watcher saw exactly the stored messages, zero server errors; on four workers throughput rose from 151 to 255 requests per second.
+
+Still open:
+- **Toss timeout default** when a captain is absent: not built because the rulebook rule has not been provided. It needs a decision on who is treated as absent, how long to wait, and what the default choice is.
+- Messages from simultaneous senders can reach a client slightly out of id order. The screen inserts by id, and a reconnect now re-reads the newest page, so nothing can be missed.
+- Latency on a single development worker degrades under 240 chatters (p95 about 4 seconds); with four workers it halves. Real capacity numbers belong to the Phase 5 launch test on production-like infrastructure.
+
+## Phase 2 definition of done: status
+- Season chat, match chat and umpire channel with every roadmap feature (images and stickers dropped by decision): done.
+- Match announcements and notifications for every listed event, plus scheduled reminders: done.
+- No path exposes hidden digits or a room the user cannot read: covered by tests and the security review.
+- Tests, lint, browser tests and load test green: see the Sprint 8 commit.

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class ORM(BaseModel):
@@ -48,13 +48,28 @@ class UserOut(ORM):
     status: str
 
 
+class UserLite(ORM):
+    """What other players may see about someone: no email, phone or account status."""
+
+    id: int
+    name: str
+    player_code: str
+
+
 class MeOut(UserOut):
     roles: list[str]
 
 
 class ProfileIn(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
-    avatar_url: str | None = None
+    avatar_url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("avatar_url")
+    @classmethod
+    def _web_url_only(cls, v: str | None) -> str | None:
+        if v is not None and not v.lower().startswith(("https://", "http://")):
+            raise ValueError("Avatar must be an http(s) URL")
+        return v
 
 
 class RoleIn(BaseModel):
