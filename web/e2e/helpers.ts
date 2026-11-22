@@ -78,3 +78,29 @@ export async function seed(opts: { start: boolean }) {
   const adminUser: U = { email: adminEmail, token: admin, id: 0, name: "E2E Admin" };
   return { admin, adminUser, ump, ut, A, B, outsider, match: m.id, season: season.id, teams: ids };
 }
+
+/** A season with 4 teams of 3 players, 3 umpires and an admin. No matches yet. */
+export async function seedLeague() {
+  const adminEmail = `lroot${run}${n}@t.io`;
+  execSync(`docker compose exec -T api python -m app.create_admin ${adminEmail} ${PASSWORD} "League Admin"`, { cwd: ROOT });
+  const admin = (await call<{ access_token: string }>("/auth/login", "POST", { email: adminEmail, password: PASSWORD })).access_token;
+  const umpires = [await user("Umpire"), await user("Umpire"), await user("Umpire")];
+  for (const u of umpires) await call(`/users/${u.id}/roles`, "POST", { role: "umpire" }, admin);
+  const teams: { id: number; name: string; players: U[] }[] = [];
+  for (const name of ["Aces", "Bulls", "Cobras", "Dragons"]) {
+    teams.push({ id: 0, name, players: [await user(name), await user(name), await user(name)] });
+  }
+  execSync(
+    `docker compose exec -T postgres psql -U ffcl -d ffcl -c "update users set phone_verified=true where email like 'e2e${run}%'"`,
+    { cwd: ROOT },
+  );
+  n += 1;
+  const season = await call<{ id: number }>("/seasons", "POST", { name: `League ${run}-${n}`, status: "active" }, admin);
+  for (const t of teams) {
+    t.id = (await call<{ id: number }>(`/seasons/${season.id}/teams`, "POST", { name: t.name }, admin)).id;
+    for (const p of t.players) await call(`/teams/${t.id}/members`, "POST", { user_id: p.id }, admin);
+    await call(`/teams/${t.id}`, "PATCH", { captain_id: t.players[0].id }, admin);
+  }
+  const adminUser: U = { email: adminEmail, token: admin, id: 0, name: "League Admin" };
+  return { admin, adminUser, season: season.id, teams, umpires };
+}

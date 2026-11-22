@@ -148,11 +148,13 @@ class MatchIn(BaseModel):
     team_b_id: int
     umpire_id: int | None = None
     scheduled_at: datetime | None = None
+    force: bool = False  # create even if it clashes with another match (audited)
 
 
 class MatchPatch(BaseModel):
     umpire_id: int | None = None
     scheduled_at: datetime | None = None
+    force: bool = False
 
 
 class MatchOut(ORM):
@@ -164,6 +166,9 @@ class MatchOut(ORM):
     umpire_id: int | None
     scheduled_at: datetime | None
     status: str
+    stage_id: int | None = None
+    round_label: str | None = None
+    published_at: datetime | None = None
 
 
 class LineupIn(BaseModel):

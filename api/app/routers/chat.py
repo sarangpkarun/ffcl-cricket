@@ -23,6 +23,7 @@ from app.services.notify import notify
 from app.services.outbox import flush as flush_outbox
 from app.services.presence import online_users
 from app.services.ratelimit import allow
+from app.services.schedule import ensure_visible
 
 router = APIRouter(tags=["chat"])
 
@@ -82,6 +83,7 @@ async def match_rooms(match_id: int, user: User = Depends(get_current_user),
     match = await db.get(Match, match_id)
     if not match:
         raise HTTPException(404, "Match not found")
+    await ensure_visible(db, user, match)
     rooms = await svc.ensure_match_rooms(db, match)
     await db.commit()
     out: dict = {"match": None, "umpire": None}

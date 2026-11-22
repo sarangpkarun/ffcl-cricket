@@ -87,3 +87,28 @@ async def play(ctx: Ctx, batters, bowlers, over_no, bat_digits=BAT, bowl_digits=
 
 async def live(ctx: Ctx, who=None):
     return (await (who or ctx.ump).req("GET", f"{ctx.url}/live")).json()
+
+
+@dataclass
+class League:
+    admin: object
+    teams: list  # team ids
+    players: dict  # team id -> [actors]
+    umpires: list  # neutral umpire actors (no team)
+    sid: int
+
+
+async def make_league(make_user, n_teams=4, per_team=2, n_umpires=3, name="League") -> League:
+    admin = await make_user("Admin", roles=["tournament_admin"])
+    sid = (await admin.req("POST", "/seasons", json={"name": f"{name}{admin.id}", "status": "active"})).json()["id"]
+    teams, players = [], {}
+    for i in range(n_teams):
+        tid = (await admin.req("POST", f"/seasons/{sid}/teams", json={"name": f"Team{i + 1}"})).json()["id"]
+        teams.append(tid)
+        players[tid] = [await make_user(f"T{i + 1}P") for _ in range(per_team)]
+        for p in players[tid]:
+            r = await admin.req("POST", f"/teams/{tid}/members", json={"user_id": p.id})
+            assert r.status_code == 201, r.text
+        await admin.req("PATCH", f"/teams/{tid}", json={"captain_id": players[tid][0].id})
+    umpires = [await make_user("Ump", roles=["umpire"]) for _ in range(n_umpires)]
+    return League(admin, teams, players, umpires, sid)

@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.deps import get_current_user, is_admin
 from app.engine import BAT, BOWL, batting_stats, bowling_stats, summarize_innings
 from app.routers.play import digits_of, get_submissions
+from app.services.schedule import ensure_visible
 from app.services.scoring import engine_inputs, get_innings, load_rules
 
 router = APIRouter(tags=["live"])
@@ -42,6 +43,7 @@ async def live(match_id: int, user: User = Depends(get_current_user),
     m = await db.get(Match, match_id)
     if not m:
         raise HTTPException(404, "Match not found")
+    await ensure_visible(db, user, m)
     rules = await load_rules(db, m)
     official = m.umpire_id == user.id or await is_admin(db, user)
     teams = {t.id: t for t in await db.scalars(select(Team).where(Team.id.in_([m.team_a_id, m.team_b_id])))}

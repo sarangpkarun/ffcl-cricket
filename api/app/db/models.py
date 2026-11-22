@@ -113,6 +113,19 @@ class TeamMember(Base):
     status: Mapped[str] = mapped_column(String(16), default="pending")  # pending|approved|removed
 
 
+class Stage(Base):
+    """A phase of a season: the round robin, then the knockouts."""
+
+    __tablename__ = "stages"
+    __table_args__ = (UniqueConstraint("season_id", "ord"),)
+    id: Mapped[int] = _pk()
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"))
+    kind: Mapped[str] = mapped_column(String(12))  # round_robin|knockout
+    name: Mapped[str] = mapped_column(String(60))
+    ord: Mapped[int] = mapped_column(Integer)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
 class Match(Base):
     __tablename__ = "matches"
     __table_args__ = (UniqueConstraint("season_id", "match_no"),)
@@ -129,6 +142,9 @@ class Match(Base):
     winner_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
     result_text: Mapped[str | None] = mapped_column(String(200))
     seq: Mapped[int] = mapped_column(Integer, default=0)  # bumped on every state change
+    stage_id: Mapped[int | None] = mapped_column(ForeignKey("stages.id"))
+    round_label: Mapped[str | None] = mapped_column(String(40))  # "Round 3", "Semi-final 1", "Final"
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # null = draft, admins only
 
 
 class MatchPlayer(Base):

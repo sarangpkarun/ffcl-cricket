@@ -34,6 +34,8 @@ function detail(body: unknown): string {
   if (Array.isArray(d)) return d.map((e) => (e as { msg: string }).msg).join(", ");
   const errs = (d as { errors?: { message: string }[] } | undefined)?.errors;
   if (errs) return errs.map((e) => e.message).join(". ");
+  const clashes = (d as { conflicts?: string[] } | undefined)?.conflicts;
+  if (clashes) return `Clash: ${clashes.join(". ")}`;
   return "Request failed";
 }
 
@@ -209,3 +211,21 @@ export type RoomInfo = {
 export type Pending = { client_id: string; body: string; failed: boolean; error?: string; replyToId?: number; mentions?: number[] };
 export type Person = { id: number; name: string };
 export type Mentionable = Person & { player_code: string };
+
+export type FixtureTeam = { id: number; name: string; color: string | null };
+export type Fixture = {
+  id: number;
+  match_no: number;
+  round_label: string | null;
+  status: string;
+  paused: boolean;
+  scheduled_at: string | null;
+  published: boolean;
+  team_a: FixtureTeam;
+  team_b: FixtureTeam;
+  umpire_id: number | null;
+  umpire: string | null;
+  result: string | null;
+  winner_team_id: number | null;
+};
+export class ClashError extends Error {}

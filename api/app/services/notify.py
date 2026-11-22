@@ -24,6 +24,8 @@ KINDS: dict[str, tuple[str, bool]] = {
     "match_reminder": ("A match of mine is about to start", True),
     "toss_reminder": ("The toss is due and nobody has opened it", True),
     "deadline_alert": ("My submission deadline is close", True),
+    "fixtures_published": ("New fixtures are published", True),
+    "fixture_change": ("One of my matches is rescheduled", True),
 }
 
 

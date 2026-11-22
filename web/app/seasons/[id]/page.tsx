@@ -37,6 +37,7 @@ function SeasonPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">{season?.name ?? "Season"}</h1>
+      <Link href={`/admin/seasons/${id}/setup`} className="block rounded-lg border p-3 text-center text-sm">📅 Generate and publish fixtures</Link>
       <ErrorText msg={err} />
 
       <section className="space-y-2">

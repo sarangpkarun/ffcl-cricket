@@ -38,6 +38,8 @@ async def lock_match(db: AsyncSession, match_id: int) -> Match:
     m = await db.scalar(select(Match).where(Match.id == match_id).with_for_update())
     if not m:
         raise HTTPException(404, "Match not found")
+    if m.published_at is None:
+        raise HTTPException(409, "This match has not been published yet")
     return m
 
 

@@ -48,7 +48,7 @@ Defaults I chose (tell me if any are wrong; each is a setting):
 
 ## Sprints (about 5 weeks)
 
-### Sprint 9: Fixtures and scheduling (week 1)
+### Sprint 9: Fixtures and scheduling (week 1) ✅ done
 - Migration 0006; `engine/fixtures.py`: round-robin generator (circle method, odd team counts get byes, optional second leg, home/away balanced), plus a scheduler that spreads matches over dates and time slots with no team playing twice at once.
 - Umpire suggestion: each team supplies umpires evenly; never someone playing in that match or at the same time.
 - API: create stages, generate (preview first, then save as unpublished), edit/reschedule/delete drafts, publish, conflict checks (team or umpire double-booked), notifications ("fixtures published", "match rescheduled").
@@ -116,3 +116,19 @@ Odd number of teams (byes); a team entered twice in one slot; umpire who is also
 - Leaderboards and player pages reconcile with the scorecards, including after corrections.
 - Roster and phone-number changes need approval; archived seasons cannot be modified.
 - Tests, lint, browser tests and the load test are green; documented in `docs/PHASE3.md`.
+
+## Sprint 9 outcome
+Built:
+- **Fixture engine** (`engine/fixtures.py`, pure): round-robin by the circle method (odd team counts give each team one bye per leg; optional second leg with home and away swapped), a slot scheduler (matches per slot, rest between a team's matches, rounds kept in order, local times with weekdays) and a fair umpire plan (never someone in either team, never playing or umpiring at the same time, duties shared evenly between supplying teams, then between people). 195 engine tests including a hand-worked 4-team case.
+- **Draft then publish.** Generated matches are drafts (`published_at` empty) visible only to admins, in every view: match list, match page, live view, chat rooms, lineup, and nobody can start a draft. Publishing sets them live, notifies each team's members once ("New fixtures are published" with that team's next match) and tells umpires, and is safe to repeat. Matches an admin creates by hand are published immediately, as before.
+- **Clash checks** on every create and reschedule: a team, an umpire, or an umpire who is playing, within 90 minutes of another match. The organiser can override ("Save anyway"), which is audited. Rescheduling a published match posts a line in the match chat and notifies both teams and the umpire.
+- **API**: preview (saves nothing), generate (creates the stage and draft matches, with chat rooms), replace unpublished drafts, publish (all, one stage, or chosen matches), delete drafts (published matches can never be deleted), fixture list with filters, stages list.
+- **Screens**: **Fixtures** page (Upcoming / Live / Completed, team filter, status badges, admin "Show drafts") replacing Matches in the bottom navigation, and an admin **Fixtures setup** page (format, preview with warnings, create drafts, review and edit each draft, two-step publish).
+- Migration 0006 (stages, round label, published date; existing matches backfilled as published).
+
+Bugs the tests caught while building: the first home/away heuristic was unbalanced for every league above two teams (replaced by an Euler-circuit orientation, which is provably within one); the draft umpire dropdown could display "No umpire" for an assigned umpire when the umpire list was capped.
+
+Deliberate limits:
+- The admin umpire choices list the first 100 umpires (search comes with the People screen); generation itself uses all of them.
+- Knockout stages arrive in Sprint 10; this sprint generates the league stage only.
+- Time zone is entered as text (defaults to the browser's); there is no per-league setting yet.
