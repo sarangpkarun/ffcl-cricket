@@ -3,11 +3,61 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { btnGhost, ErrorText, RequireAuth } from "@/components/ui-bits";
-import { api, put } from "@/lib/api";
+import { api, post, put } from "@/lib/api";
+import { disablePush, enablePush, pushState, type PushState } from "@/lib/push";
 import { useNotifications } from "@/lib/notifications";
 
-type Pref = { kind: string; label: string; in_app: boolean };
+type Pref = { kind: string; label: string; in_app: boolean; push: boolean };
 const ago = (iso: string) => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+function PushSettings({ prefs, setPrefs }: { prefs: Pref[]; setPrefs: (f: (p: Pref[]) => Pref[]) => void }) {
+  const [state, setState] = useState<PushState | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { void pushState().then(setState); }, []);
+  const run = async (fn: () => Promise<unknown>, done?: string) => {
+    setErr(null);
+    setMsg(null);
+    try { await fn(); if (done) setMsg(done); setState(await pushState()); } catch (e) { setErr((e as Error).message); }
+  };
+  async function toggle(p: Pref) {
+    setPrefs((cur) => cur.map((x) => (x.kind === p.kind ? { ...x, push: !p.push } : x)));
+    try { await put("/notifications/prefs", { kind: p.kind, push: !p.push }); }
+    catch (e) { setErr((e as Error).message); setPrefs((cur) => cur.map((x) => (x.kind === p.kind ? { ...x, push: p.push } : x))); }
+  }
+  if (state === null || state === "disabled") return null;
+  return (
+    <section aria-label="Push notifications" className="space-y-2">
+      <h2 className="font-medium">Alerts on this device</h2>
+      <ErrorText msg={err} />
+      {msg && <p role="status" className="text-sm text-green-700">{msg}</p>}
+      {state === "unsupported" && <p className="text-sm text-muted-foreground">This browser cannot show alerts. On an iPhone, add FFCL to your Home Screen first, then open it from there.</p>}
+      {state === "denied" && <p className="text-sm text-muted-foreground">Alerts are blocked for this site. Allow notifications in your browser&apos;s site settings, then come back.</p>}
+      {state === "off" && <button className={btnGhost} onClick={() => run(enablePush, "Alerts are on for this device.")}>Turn on alerts on this device</button>}
+      {state === "on" && (
+        <div className="flex flex-wrap gap-2">
+          <button className={btnGhost} onClick={() => run(() => post("/me/push/test"), "Test sent. You should see it in a moment.")}>Send a test alert</button>
+          <button className={btnGhost} onClick={() => run(disablePush, "Alerts are off for this device.")}>Turn off on this device</button>
+        </div>
+      )}
+      {state === "on" && (
+        <>
+          <p className="text-xs text-muted-foreground">Alerts are only sent when the app is not open in front of you. Choose which ones you want:</p>
+          <ul className="space-y-1">
+            {prefs.map((p) => (
+              <li key={p.kind}>
+                <label className="flex items-center justify-between rounded-lg border px-3 py-3 text-sm">
+                  <span>{p.label}</span>
+                  <input type="checkbox" aria-label={`Alert me: ${p.label}`} checked={p.push} onChange={() => void toggle(p)} />
+                </label>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
 
 function Inbox() {
   const { items, unread, hasMore, markRead, markAll, loadMore } = useNotifications();
@@ -68,6 +118,7 @@ function Inbox() {
           ))}
         </ul>
       </section>
+      <PushSettings prefs={prefs} setPrefs={setPrefs} />
     </div>
   );
 }

@@ -88,6 +88,16 @@ Accepted for now (Phase 5):
 | P7 | Team and player names inside structured data could close the script tag. | The only raw-markup component (`JsonLd`) escapes `<`, `>`, `&` and line separators; a test feeds it a hostile name. The guard test allows no other file. |
 | P8 | Crawlers indexing signed-in pages and API JSON. | `robots.txt` disallows the signed-in routes; unknown pages are marked not indexable. |
 
+## Addendum: installable app and push (Sprint 15)
+| # | Finding | Fix or decision |
+|---|---|---|
+| N1 | A push subscription holds a URL our server will POST to; a hostile user could point it at internal addresses (SSRF). | https only, no credentials, port 443 only, no IP addresses, exact push-service host families (a long list of look-alike and internal hosts is tested), and the sender never follows redirects (tested against a real redirecting server). |
+| N2 | A push could carry private content or lead somewhere hostile. | The payload is built only from the notification's own title, body and an in-app link; links that are not site paths become the inbox (both on the server and again in the service worker); a test builds a payload for every notification kind. Hidden digits are never in a notification, so never in a push. |
+| N3 | A shared phone or computer keeps getting the previous person's alerts. | Re-subscribing the same browser moves it to the signed-in person; turning alerts off removes it on the server; dead devices are deleted automatically. |
+| N4 | Push spam and cost. | Per-kind defaults with noisy kinds off, personal choices, no push while the app is in front, a limit of 10 devices per person, rate limits on registering and on the test button, and one job per notification. |
+| N5 | The service worker caching the wrong thing (a stale scoreboard, or a signed-in page for the wrong person). | It stores only the offline page and an icon and never caches pages or API responses. |
+| N6 | Push keys. | The private key lives in the server environment only (never committed, never sent to the browser); the public key is served from `/push/key`; the production guard refuses to start with push enabled and no keys. |
+
 ## Re-running the checks
 
 ```

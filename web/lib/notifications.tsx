@@ -65,6 +65,14 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     let timer: ReturnType<typeof setTimeout> | undefined;
     let ws: WebSocket | null = null;
 
+    // Tell the server whether this page is in front, so it does not also push a notification to the phone
+    // while the person is looking at the app.
+    const tellServer = () => {
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: document.visibilityState === "visible" ? "fg" : "bg" }));
+    };
+    const beat = setInterval(() => document.visibilityState === "visible" && tellServer(), 20_000);
+    document.addEventListener("visibilitychange", tellServer);
+
     const connect = async () => {
       try {
         await api("/me"); // refresh an expired access token before the handshake
@@ -74,7 +82,10 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const tokens = loadTokens();
       if (closed || !tokens) return;
       ws = new WebSocket(`${WS}/ws/me`);
-      ws.onopen = () => ws?.send(JSON.stringify({ type: "auth", token: tokens.access_token }));
+      ws.onopen = () => {
+        ws?.send(JSON.stringify({ type: "auth", token: tokens.access_token }));
+        tellServer();
+      };
       ws.onmessage = (e) => {
         const ev = JSON.parse(e.data as string) as { type: string; unread?: number; notification?: Notif };
         if (ev.type === "hello") {
@@ -102,6 +113,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       closed = true;
       clearTimeout(timer);
       clearTimeout(toastTimer.current);
+      clearInterval(beat);
+      document.removeEventListener("visibilitychange", tellServer);
       ws?.close();
     };
   }, [userId, reload]);

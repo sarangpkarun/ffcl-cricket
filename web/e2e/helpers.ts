@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
-import type { Browser, Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import type { Browser, BrowserContextOptions, Page } from "@playwright/test";
 
 export const API = process.env.E2E_API_URL ?? "http://localhost:8000";
 const ROOT = process.env.E2E_ROOT ?? `${process.cwd()}/..`;
@@ -39,8 +40,15 @@ export async function user(label: string): Promise<U> {
   return { email, token: t.access_token, id: me.id, name };
 }
 
-export async function loginPage(browser: Browser, u: U, path: string): Promise<Page> {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+/** The API and worker logs: from the containers, or from the files named in E2E_API_LOG and E2E_WORKER_LOG when run from this checkout. */
+export function apiLog(): string {
+  if (process.env.E2E_API_LOG) return [process.env.E2E_API_LOG, process.env.E2E_WORKER_LOG].filter(Boolean).map((f) => readFileSync(f!, "utf8")).join("\n");
+  return execSync("docker compose logs api worker --since 10m 2>&1", { cwd: ROOT, encoding: "utf8" });
+}
+
+export async function loginPage(browser: Browser, u: U, path: string, ctxOpts: BrowserContextOptions = {}, init?: () => void): Promise<Page> {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, ...ctxOpts });
+  if (init) await ctx.addInitScript(init);
   const page = await ctx.newPage();
   await page.goto("/login");
   await page.getByLabel("Email").fill(u.email);

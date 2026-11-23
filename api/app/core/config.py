@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     public_cache_enabled: bool = True  # shared short-lived cache for public reads (tests turn it off)
     public_ws_per_ip: int = 5  # simultaneous anonymous live sockets per address
     public_ws_total: int = 3000  # and across the whole server
+    push_enabled: bool = False  # browser push needs VAPID keys (python -m app.make_vapid)
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:admin@ffcl.example"  # who a push service can contact about this server
+    push_dry_run: bool = False  # log pushes instead of sending them (staging, browser tests)
+    push_max_devices_per_user: int = 10
     trust_proxy: bool = False  # honour X-Forwarded-For (only behind a proxy you control)
 
 
@@ -33,3 +39,5 @@ def assert_production_safe(s: Settings) -> None:
         raise RuntimeError("JWT_SECRET must be set to a strong random value (32+ characters) in production")
     if not s.auth_rate_limits_enabled:
         raise RuntimeError("Auth rate limits must stay enabled in production")
+    if s.push_enabled and not (s.vapid_public_key and s.vapid_private_key):
+        raise RuntimeError("PUSH_ENABLED needs VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (generate with python -m app.make_vapid)")

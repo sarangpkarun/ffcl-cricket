@@ -370,6 +370,7 @@ class NotificationPref(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     kind: Mapped[str] = mapped_column(String(24))
     in_app: Mapped[bool] = mapped_column(Boolean)
+    push: Mapped[bool | None] = mapped_column(Boolean)  # null = the kind's default for browser push
 
 
 class MatchResult(Base):
@@ -482,3 +483,18 @@ class PhoneChangeRequest(Base):
     decision_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = _now()
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PushSubscription(Base):
+    """One browser or phone that agreed to receive push notifications for a user."""
+
+    __tablename__ = "push_subscriptions"
+    id: Mapped[int] = _pk()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(1000), unique=True)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    user_agent: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = _now()
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failures: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

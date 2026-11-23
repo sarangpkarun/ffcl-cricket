@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Notification, NotificationPref, User
@@ -11,6 +10,7 @@ from app.db.session import get_session
 from app.deps import get_current_user
 from app.services.notify import KINDS
 from app.services.outbox import notification_out
+from app.services.push import push_default
 
 router = APIRouter(tags=["notifications"])
 
@@ -57,13 +57,15 @@ async def mark_read(notification_id: int, user: User = Depends(get_current_user)
 
 @router.get("/notifications/prefs")
 async def get_prefs(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> list[dict]:
-    mine = {p.kind: p.in_app for p in await db.scalars(select(NotificationPref).where(NotificationPref.user_id == user.id))}
-    return [{"kind": k, "label": label, "in_app": mine.get(k, default)} for k, (label, default) in KINDS.items()]
+    mine = {p.kind: p for p in await db.scalars(select(NotificationPref).where(NotificationPref.user_id == user.id))}
+    return [{"kind": k, "label": label, "in_app": mine[k].in_app if k in mine else default,
+             "push": mine[k].push if k in mine and mine[k].push is not None else push_default(k)} for k, (label, default) in KINDS.items()]
 
 
 class PrefIn(BaseModel):
     kind: str
-    in_app: bool
+    in_app: bool | None = None  # leave out to keep as it is
+    push: bool | None = None
 
 
 @router.put("/notifications/prefs", status_code=204)
@@ -71,8 +73,14 @@ async def set_pref(body: PrefIn, user: User = Depends(get_current_user),
                    db: AsyncSession = Depends(get_session)) -> None:
     if body.kind not in KINDS:
         raise HTTPException(422, "Unknown notification kind")
-    stmt = pg_insert(NotificationPref).values(user_id=user.id, kind=body.kind, in_app=body.in_app)
-    await db.execute(stmt.on_conflict_do_update(index_elements=["user_id", "kind"], set_={"in_app": body.in_app}))
+    if body.in_app is None and body.push is None:
+        raise HTTPException(422, "Nothing to change")
+    row = await db.scalar(select(NotificationPref).where(NotificationPref.user_id == user.id, NotificationPref.kind == body.kind))
+    if row is None:
+        row = NotificationPref(user_id=user.id, kind=body.kind, in_app=KINDS[body.kind][1])
+        db.add(row)
+    if body.in_app is not None:
+        row.in_app = body.in_app
+    if body.push is not None:
+        row.push = body.push
     await db.commit()
-
-

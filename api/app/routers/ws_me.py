@@ -4,9 +4,10 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.realtime import new_pubsub, user_channel
+from app.realtime import client, new_pubsub, user_channel
 from app.routers.notifications import unread_count
 from app.routers.ws import authenticate, log_task_failures, receive_token, session_alive, ws_db
+from app.services.push import FG_SECONDS
 
 router = APIRouter()
 RECHECK_SECONDS = 25
@@ -50,8 +51,18 @@ async def me_socket(ws: WebSocket) -> None:
                 await ws.send_text('{"type":"ping"}')
 
         async def drain() -> None:
+            """The page says "fg" while it is open and visible (about every 20 seconds) and "bg" when it is hidden.
+            While a person is looking at the app they get notifications there, not as a push on top."""
             while True:
-                await ws.receive_text()
+                try:
+                    kind = json.loads(await ws.receive_text()).get("type")
+                except (ValueError, AttributeError):
+                    continue
+                with contextlib.suppress(Exception):
+                    if kind == "fg":
+                        await client().set(f"fg:{user.id}", "1", ex=FG_SECONDS)
+                    elif kind == "bg":
+                        await client().delete(f"fg:{user.id}")
 
         tasks = [asyncio.create_task(f()) for f in (pump, recheck, drain)]
         await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -59,6 +70,8 @@ async def me_socket(ws: WebSocket) -> None:
         pass
     finally:
         log_task_failures("notifications", tasks)
+        with contextlib.suppress(Exception):
+            await client().delete(f"fg:{user.id}")  # another open tab sends its next heartbeat within seconds
         for t in tasks:
             t.cancel()
         with contextlib.suppress(Exception):

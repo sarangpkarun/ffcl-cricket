@@ -53,7 +53,7 @@ Defaults I chose (tell me if any are wrong):
 - SEO and sharing: page metadata, `sitemap.ts` (seasons, teams, players, matches), `robots.ts`, `opengraph-image` for matches and teams, JSON-LD `SportsEvent` on matches.
 - **Exit:** a signed-out browser follows a live match, sees the table update, browses a past season; the page source already contains the content; a hidden player and a draft fixture appear nowhere.
 
-### Sprint 15: Installable app and browser push (week 3)
+### Sprint 15: Installable app and browser push (week 3) ✅ done
 - `app/manifest.ts`, icons (generated with the icon file conventions), theme colour, install prompt component (Chrome's prompt, plus short iOS "Add to Home Screen" instructions), offline page.
 - `public/sw.js`: handles `push` (shows title, body and link) and `notificationclick` (focus or open the link). No API caching.
 - Migration 0012. `POST/DELETE /me/push/subscriptions`, `GET /push/key`; endpoint host allow-list, https only, at most 10 per user. Notification settings page gets a Push toggle per kind plus "Enable on this device".
@@ -140,3 +140,24 @@ Decisions and limits:
 - Server-rendered pages forward the visitor's address (`X-Forwarded-For`) so the rate limit applies per visitor, not per web server. In production run behind Nginx that sets this header and set `TRUST_PROXY=true`.
 - In Docker the web service reaches the API at `API_INTERNAL_URL=http://api:8000`; `NEXT_PUBLIC_SITE_URL` sets the public address used in the sitemap and share cards.
 - Unknown seasons or matches show a "not found" page, but because pages stream, the HTTP status is 200; the page is marked not indexable.
+
+## Sprint 15 outcome
+Built:
+- **Installable app**: web app manifest (name, icons with a maskable one, theme colour, shortcuts to Fixtures, Points table and Notifications), icons drawn by the server so there are no image files to maintain, and an **install banner**: Chrome and Edge show it when the browser says the app can be installed, iPhone Safari gets a short "Share, then Add to Home Screen" hint, and "Not now" is remembered.
+- **Service worker** (`public/sw.js`): shows push notifications, opens the right page when one is tapped (reusing an open window; only paths inside the site are ever opened), and shows a friendly **offline page** when a page cannot load. It never stores API responses or pages, so nothing stale can be shown as current. Its push and tap logic has its own unit tests (odd or hostile payloads included).
+- **Browser push** (Web Push with our own VAPID keys, `python -m app.make_vapid` makes them):
+  - Devices: `GET /push/key`, `POST /me/push/subscriptions` (also called when the same browser re-subscribes; a device used by someone else moves to whoever is signed in), list, remove by id or by address, and `POST /me/push/test` ("send a test alert", with the result). Limit of 10 devices per person.
+  - **Delivery** is a background job (`send_push`) queued when a notification commits, through a small channel interface (`services/delivery.py`) so email or WhatsApp could be added later. Pushes go only to people who want them, are skipped while the person has the app open and in front, and dead devices (404 or 410 from the push service, or five failures in a row) are deleted; a nightly job forgets devices that never worked. One crashing device never blocks the others.
+  - **Who gets what**: pushes are on by default for the important kinds and off for wicket, over complete, mention and reply; each person can change every kind (`notification_prefs.push`, shown as "Alerts on this device" on the Notifications page next to the existing in-app choices).
+  - **Foreground rule**: the page tells the server every 20 seconds while it is visible (and when it is hidden); the server remembers for 45 seconds. A person reading the app gets the in-app toast, not a second alert on their phone.
+  - **Safety**: an endpoint must be a plain https address of a known push service (Google, Mozilla, Apple, Windows; no IP addresses, no credentials, no other ports, no look-alike hosts), the sender never follows redirects, and a payload is only title, body and an in-app link (an external link becomes the inbox). The production guard refuses to start with push enabled but no keys.
+  - `PUSH_DRY_RUN=true` logs what would be sent instead of sending it (staging and browser tests).
+- Migration 0012 (`push_subscriptions`, `notification_prefs.push`).
+
+Tests: 56 push API tests (endpoint safety table with look-alike and internal hosts, key checks, links, a payload check for every notification kind, device registration limits and ownership, defaults and overrides, foreground rule, gone and flaky devices, crash isolation, the test button, purge, redirect refusal against a real local server, VAPID key validity, the production guard, the socket heartbeat, and an end-to-end league event becoming a push), 3 service worker unit tests, and 2 browser tests (manifest, icons, offline page, install banner for Chrome and iPhone; then a real subscribe flow with a fake push service, preference toggles, the test alert, no push while the app is in front, a push once it is hidden, the service worker showing a delivered push through the browser's own test hook, and turning it off).
+
+Decisions and limits:
+- A real push to a real phone cannot be proven by an automated test. The browser tests prove everything on our side (what is sent, to whom, when, and how the worker shows it); the manual check in the verification list (install on a phone, subscribe, receive an alert) is still to do before launch.
+- iPhone only delivers push to apps added to the Home Screen (iOS 16.4 or later); the settings page says so.
+- The Docker `worker` container needs the same push settings as the API (they come from `.env`).
+- Push is off unless `PUSH_ENABLED=true` and the keys are set; with it off the app behaves exactly as before.

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import ChatMessage, Notification
 from app.realtime import publish_room, publish_user
 from app.services import chat as svc
+from app.services import delivery
 
 _KEY = "outbox"
 
@@ -40,6 +41,7 @@ def notification_out(n: Notification) -> dict:
 async def flush(db: AsyncSession) -> None:
     """Publish everything queued on this session. Call only after a successful commit."""
     items = db.info.pop(_KEY, [])
+    pushed: list[int] = []
     for kind, x in items:
         if kind == "msg":
             out = (await svc.messages_out(db, [x]))[0]
@@ -48,3 +50,5 @@ async def flush(db: AsyncSession) -> None:
             await publish_room(x, {"type": "room_state"})
         elif kind == "notif":
             await publish_user(x.user_id, {"type": "notification", "notification": notification_out(x)})
+            pushed.append(x.id)
+    await delivery.dispatch(pushed)
