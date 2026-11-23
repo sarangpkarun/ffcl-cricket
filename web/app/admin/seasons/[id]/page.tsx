@@ -85,6 +85,7 @@ function Dashboard() {
       <nav aria-label="Manage this season" className="flex flex-wrap gap-3 text-sm">
         <Link className="underline" href={`/admin/seasons/${id}/setup`}>Fixtures, knockouts, archive and exports</Link>
         <Link className="underline" href={`/seasons/${id}`}>Teams</Link>
+        <Link className="underline" href="/admin/import">Add players</Link>
         <Link className="underline" href="/insights">Insights</Link>
         <Link className="underline" href={`/league/${d.season.slug}`}>Public page</Link>
       </nav>

@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime, timedelta
 
 from fastapi.routing import APIRoute
 from sqlalchemy import select, update
@@ -41,11 +42,17 @@ async def resources(lg: League, db) -> dict:
     d = Dispute(season_id=lg.sid, match_id=mid, kind="other", raised_by=lg.players[lg.teams[0]][0].id, raised_as="captain", body=BODY)
     db.add_all([rc, d])
     await db.commit()
-    return {"season": lg.sid, "match": mid, "team": team, "adjustment": adj["id"], "duty": duty, "roster": rc.id, "dispute": d.id}
+    from app.db.models import Invite
+
+    inv = Invite(token_hash=f"t{lg.sid}", name="Invited", phone=f"+9188{lg.sid:08d}", team_id=team, season_id=lg.sid, created_by=lg.players[team][0].id,
+                 expires_at=datetime.now(UTC) + timedelta(days=1))
+    db.add(inv)
+    await db.commit()
+    return {"season": lg.sid, "match": mid, "team": team, "adjustment": adj["id"], "duty": duty, "roster": rc.id, "dispute": d.id, "invite": inv.id}
 
 
 PARAM = {"season": "season_id", "match": "match_id", "team": "team_id", "adjustment": "adjustment_id", "duty": "duty_id",
-         "roster": "rc_id", "dispute": "dispute_id"}
+         "roster": "rc_id", "dispute": "dispute_id", "invite": "invite_id"}
 
 
 def api_routes():

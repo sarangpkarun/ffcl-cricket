@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     refresh_ttl_days: int = 30
     otp_ttl_minutes: int = 5
     otp_max_attempts: int = 5
-    otp_provider: str = "console"
+    otp_provider: str = ""  # console | disabled; empty means console in development and disabled in production
     environment: str = "development"  # set to "production" on a real server
     auth_rate_limits_enabled: bool = True  # login / register / OTP request throttling
     public_rate_limit_per_minute: int = 300  # per address, anonymous readers (0 turns it off)
@@ -39,5 +39,7 @@ def assert_production_safe(s: Settings) -> None:
         raise RuntimeError("JWT_SECRET must be set to a strong random value (32+ characters) in production")
     if not s.auth_rate_limits_enabled:
         raise RuntimeError("Auth rate limits must stay enabled in production")
+    if s.otp_provider not in ("", "disabled"):
+        raise RuntimeError("OTP_PROVIDER must be 'disabled' in production (the console provider logs one-time codes)")
     if s.push_enabled and not (s.vapid_public_key and s.vapid_private_key):
         raise RuntimeError("PUSH_ENABLED needs VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (generate with python -m app.make_vapid)")

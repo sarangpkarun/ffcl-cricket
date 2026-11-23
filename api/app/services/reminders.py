@@ -51,7 +51,7 @@ async def scan_reminders(ctx: dict, now: datetime | None = None) -> dict[str, in
                 officials = {i for i in (m.umpire_id,) if i}
                 sent["toss_reminder"] += await notify(
                     db, await _captains(db, m) | officials, "toss_reminder", "It is match time",
-                    f"{versus}: the toss has not been opened yet.", _link(m), f"toss-due:{m.id}")
+                    f"{versus}: the toss has not been opened yet. If a captain does not answer, the umpire can declare a walkover after the waiting time.", _link(m), f"toss-due:{m.id}")
         await db.commit()
         await flush(db)
     return sent

@@ -65,6 +65,7 @@ class AdminOut(BaseModel):
 
 
 class MeOut(UserOut):
+    phone_codes: bool = True  # false when no SMS provider is set up: numbers are verified by an organiser
     roles: list[str]
     admin: AdminOut
 

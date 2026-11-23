@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { btnGhost, ErrorText, inputCls, RequireAuth } from "@/components/ui-bits";
 import { api, del, post, put, type Season } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { VerifyPhone } from "@/components/admin/VerifyPhone";
 
 type RoleRow = { role: string; season_id: number | null };
 type AdminUser = {
   id: number; player_code: string; name: string; email: string; phone: string | null;
-  phone_verified: boolean; status: string; roles: RoleRow[];
+  phone_verified: boolean; phone_verified_by_admin: boolean; status: string; roles: RoleRow[];
 };
 type Page = { total: number; users: AdminUser[] };
 
@@ -35,7 +36,7 @@ function Card({ u, canAdmin, isSuper, myId, seasons, onChange }: {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-medium">{u.name} <span className="text-xs text-muted-foreground">{u.player_code}</span></p>
-          <p className="truncate text-xs text-muted-foreground">{u.email} · {u.phone ?? "no phone"} {u.phone && (u.phone_verified ? "✅" : "⚠️ unverified")}</p>
+          <p className="truncate text-xs text-muted-foreground">{u.email} · {u.phone ?? "no phone"} {u.phone && (u.phone_verified ? (u.phone_verified_by_admin ? "✅ verified by an admin" : "✅") : "⚠️ unverified")}</p>
         </div>
         <span className={`rounded-full border px-2 py-0.5 text-xs ${u.status === "active" ? "" : "border-red-500 text-red-700"}`}>{u.status}</span>
       </div>
@@ -52,6 +53,7 @@ function Card({ u, canAdmin, isSuper, myId, seasons, onChange }: {
         ))}
       </ul>
 
+      {canAdmin && u.phone && !u.phone_verified && u.id !== myId && <VerifyPhone u={u} onDone={onChange} />}
       {canAdmin && (
         <div className="flex flex-wrap items-center gap-2">
           <select aria-label={`Role to add for ${u.name}`} className="rounded border bg-background px-2 py-2 text-sm" value={role} onChange={(e) => setRole(e.target.value)}>

@@ -35,6 +35,11 @@ Each side submits six digits per over. In a powerplay the 5 and 6 may be in any 
 - Penalty runs and wickets count in team totals only. Never in individual batting or bowling stats.
 - Submissions are private. Neither side nor spectators see digits before the umpire locks and reveals.
 
+## Toss timeout
+- Both captains must answer the toss. The wait is `toss_timeout_minutes` after the scheduled start (default **15**, a rule-set setting from 1 to 240).
+- Nothing happens automatically. When the wait is over and the toss is not settled, the match umpire (or an admin of the season) may declare the team whose captain did not answer absent. That is an ordinary **walkover**: the other team is awarded the match, the table and chat are updated, and an admin can reverse it.
+- Before the wait is over, or once the toss is confirmed, the action is refused. A match with no scheduled start cannot use it; the umpire declares a walkover with a reason instead.
+
 ## Worked examples
 
 ### A. Bowling digit validation (normal over)

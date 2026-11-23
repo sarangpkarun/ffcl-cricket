@@ -42,6 +42,21 @@ async def walkover(match_id: int, body: WalkoverIn, user: User = Depends(get_cur
     return {"status": m.status, "winner_team_id": m.winner_team_id, "result": m.result_text}
 
 
+class TossAbsentIn(BaseModel):
+    team_id: int
+
+
+@router.post("/matches/{match_id}/toss/absent")
+async def toss_absent(match_id: int, body: TossAbsentIn, user: User = Depends(get_current_user),
+                      db: AsyncSession = Depends(get_session)) -> dict:
+    """A captain never answered the toss: after the scheduled start plus the rule's wait, award the match to the other team."""
+    m = await lock_match(db, match_id)
+    await ensure_official(db, user, m)
+    await svc.declare_toss_absent(db, m, body.team_id, user)
+    await commit_match(db, m)
+    return {"status": m.status, "winner_team_id": m.winner_team_id, "result": m.result_text}
+
+
 @router.post("/matches/{match_id}/abandon")
 async def abandon(match_id: int, body: AbandonIn, user: User = Depends(get_current_user),
                   db: AsyncSession = Depends(get_session)) -> dict:

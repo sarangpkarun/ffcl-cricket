@@ -119,6 +119,7 @@ export type Me = {
   email: string;
   phone: string | null;
   phone_verified: boolean;
+  phone_codes: boolean;
   show_publicly: boolean;
   roles: string[];
   admin: { is_global: boolean; seasons: number[] };
@@ -198,7 +199,7 @@ export type Live = {
     potm?: { id: number; name: string } | null;
     declared?: { kind: "walkover" | "abandoned"; reason: string; absent_team_id: number | null; replay_match_id: number | null } | null;
   };
-  you: { official: boolean };
+  you: { official: boolean; toss_absent_from?: string | null };
   toss: { winner_team_id: number | null; decision: string | null } | null;
   over: OverView | null;
   innings: InningsCard[];

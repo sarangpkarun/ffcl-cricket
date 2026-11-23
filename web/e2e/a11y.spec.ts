@@ -91,6 +91,7 @@ test("the signed-in app and the admin screens have no serious accessibility prob
     ["adjustments", "/admin/adjustments", "Points adjustments"],
     ["duties", "/admin/duties", "Umpire duties"],
     ["moderation", "/admin/moderation", "Chat moderation"],
+    ["add players", "/admin/import", "Add players"],
   ];
   for (const [name, path, ready] of admin) {
     await ad.goto(path);

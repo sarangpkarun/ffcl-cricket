@@ -21,6 +21,7 @@ function Admin() {
     <div className="space-y-5">
       {isGlobalAdmin && <Link href="/admin/users" className="block rounded-lg border p-3 text-center text-sm">👥 People (roles, suspend)</Link>}
       {isGlobalAdmin && <Link href="/admin/moderation" className="block rounded-lg border p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>}
+      <Link href="/admin/import" className="block rounded-lg border p-3 text-center text-sm">📥 Add players (import a list, invite links, verify numbers)</Link>
       <Link href="/admin/disputes" className="block rounded-lg border p-3 text-center text-sm">⚖️ Disputes{disputes && disputes.open + disputes.in_review > 0 && <span className="ml-2 rounded-full bg-red-600 px-2 text-xs text-white" aria-label={`${disputes.open + disputes.in_review} waiting`}>{disputes.open + disputes.in_review}</span>}</Link>
       <Link href="/admin/approvals" className="block rounded-lg border p-3 text-center text-sm">✅ Approvals (roster changes, phone numbers)</Link>
       {isGlobalAdmin && <Link href="/admin/rules" className="block rounded-lg border p-3 text-center text-sm">📏 Rule versions</Link>}

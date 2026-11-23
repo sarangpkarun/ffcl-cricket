@@ -12,7 +12,7 @@ from app.db.models import Match, MatchAward, Over, Penalty, Team, Toss, User
 from app.deps import is_admin
 from app.engine import BAT, BOWL, batting_stats, bowling_stats, summarize_innings
 from app.routers.play import digits_of, get_submissions
-from app.services.declarations import active_declaration
+from app.services.declarations import active_declaration, toss_absent_from
 from app.services.public import name_of, people
 from app.services.scoring import engine_inputs, get_innings, load_rules
 
@@ -111,6 +111,7 @@ async def build_live(db: AsyncSession, m: Match, viewer: User | None) -> dict:
     result = m.result_text
     if public and decl and decl.kind == "abandoned":
         result = "Match abandoned"  # the free-text reason stays inside the league
+    absent_from = await toss_absent_from(db, m) if official else None
     potm_id, potm_name = who(potm.id if potm else None)
     potm_out = {"id": potm_id, "name": potm_name} if potm_name else None
     return {
@@ -123,7 +124,7 @@ async def build_live(db: AsyncSession, m: Match, viewer: User | None) -> dict:
                   "declared": {"kind": decl.kind, "reason": None if public else decl.reason,
                                "absent_team_id": decl.absent_team_id,
                                "replay_match_id": None if public else decl.replay_match_id} if decl else None},
-        "you": {"official": official},
+        "you": {"official": official, "toss_absent_from": absent_from.isoformat() if absent_from else None},
         "toss": {"winner_team_id": toss.winner_team_id, "decision": toss.decision} if toss else None,
         "over": current,
         "innings": cards,

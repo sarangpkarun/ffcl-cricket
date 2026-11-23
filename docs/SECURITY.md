@@ -53,7 +53,7 @@ event loop; the test suite refuses to run unless `DATABASE_URL` is set explicitl
 | HTTPS, HSTS, security headers, request-body size limits. | Handled by the reverse proxy, which is Phase 5. | Nginx config with TLS, `client_max_body_size`, security headers. |
 | API container runs as root with auto-reload. | Development image. | Separate production image: non-root user, no `--reload`, several workers. |
 | Redis and Postgres use development credentials and no TLS. | Local only. | Strong secrets, network isolation, TLS, least-privilege database role. |
-| OTP codes are written to the log (console provider). | No SMS provider is configured yet. | Plug in a real SMS provider; never log codes. |
+| ~~OTP codes are written to the log (console provider).~~ **Closed in Sprint 19.** | Production now runs with codes disabled (nothing generated, nothing logged) and the startup guard refuses the console provider; numbers are verified by an admin. | A real SMS provider can be added behind `OtpProvider` later. |
 | Dependency audits are run by hand. | Both are clean today. | Add `pnpm audit --prod` and `pip-audit` to CI. |
 
 ## Addendum: Phase 3 review (Sprint 13)
@@ -129,6 +129,16 @@ Accepted for now (Phase 5):
 | S8 | Share previews for bots that ignore streamed metadata. | Metadata is in the head for every visitor (tested with a link-preview user agent). |
 
 Left for Phase 5 (launch): real SMS and email providers, backups and a restore drill, monitoring and alerting, staging and a pilot with real teams, and a second admin so a recused admin never leaves a dispute with nobody to decide it.
+
+## Addendum: Phase 5, Sprint 19 (verification, invites, toss timeout)
+
+| # | Risk | Control |
+|---|---|---|
+| V1 | One-time codes in the server log. | `OTP_PROVIDER=disabled` is the production default: asking for a code answers "ask an organiser" and creates nothing; `ConsoleOtpProvider` refuses to run in production and the startup guard refuses `OTP_PROVIDER=console` there. Tests check no code row and no log line. |
+| V2 | An admin vouching for numbers is a powerful act. | Needs a written reason, is audited (`phone.verify`), records who and when on the user, notifies the person, cannot be done to yourself, and a season admin can do it only for members of their own seasons (the same refusal whether the person exists or not, so ids cannot be probed). An approved phone change takes effect at once when codes are off, with the admin recorded. |
+| V3 | A leaked invite link. | A random 192-bit secret, only its hash stored; single use (row lock, tested with four simultaneous attempts); expires in 14 days; revocable; reissuing revokes the old link; the page reveals only the name, team, season and the last two digits of the number; accepting is throttled per address; every step is audited. |
+| V4 | A bulk import abusing the system. | At most 500 rows and 200 KB, creation throttled per admin, teams cannot be over-filled, duplicate and already-registered numbers are refused, names with control or direction-changing characters are refused, and exports defuse formula-looking names. |
+| V5 | An umpire wrongly ending a match. | The toss-absent action is allowed only after the scheduled start plus the rule's wait, only to the match umpire or season admins, only while the toss is unsettled, goes through the ordinary walkover (audited, announced) and an admin can reverse it. |
 
 ## Re-running the checks
 

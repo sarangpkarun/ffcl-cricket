@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 
 type PhoneChange = { id: number; new_phone: string; status: string; reason: string; decision_note: string | null } | null;
 
-function PhoneChange({ onChanged }: { onChanged: () => void }) {
+function PhoneChange({ onChanged, me }: { onChanged: () => void; me: { phone_codes: boolean } }) {
   const [req, setReq] = useState<PhoneChange>(null);
   const [form, setForm] = useState({ phone: "", reason: "" });
   const [code, setCode] = useState("");
@@ -27,7 +27,7 @@ function PhoneChange({ onChanged }: { onChanged: () => void }) {
       {req?.status === "rejected" && <p className="text-sm text-red-700">Your last request was rejected: {req.decision_note}</p>}
       {req?.status === "completed" && <p className="text-sm text-green-700">Your number was changed.</p>}
       {open && req.status === "pending" && <p className="text-sm">Waiting for an admin to approve the change to {req.new_phone}.</p>}
-      {open && req.status === "approved" && (
+      {open && req.status === "approved" && me.phone_codes && (
         <div className="space-y-2">
           <p className="text-sm">Approved. Confirm the new number {req.new_phone} with a code.</p>
           {!sent
@@ -81,7 +81,9 @@ function Profile() {
       {me.phone && !me.phone_verified && (
         <section className="space-y-3 rounded-lg border p-4">
           <p className="text-sm">You must verify your registered number to play.</p>
-          {!sent ? (
+          {!me.phone_codes ? (
+            <p className="text-sm" role="status">Ask an organiser to verify your number. They will check it with you, and you will get a notification when it is done.</p>
+          ) : !sent ? (
             <button className={btnCls} onClick={() => run(async () => { await post("/auth/otp/request", { phone: me.phone }); setSent(true); })}>
               Send OTP
             </button>
@@ -103,7 +105,7 @@ function Profile() {
           <span>Show my name on the public site. If you turn this off, you appear as your player ID ({me.player_code}) and have no public page.</span>
         </label>
       </section>
-      {me.phone_verified && <PhoneChange onChanged={() => void reload()} />}
+      {me.phone_verified && <PhoneChange me={me} onChanged={() => void reload()} />}
 
       <Link href="/disputes" className={`${btnGhost} block text-center`}>My disputes</Link>
       {isAdmin && <Link href="/admin" className={`${btnGhost} block text-center`}>Admin dashboard</Link>}

@@ -4,13 +4,23 @@ None of these create ball events: a walkover is points only, an abandonment keep
 Each leaves a `MatchDeclaration` so a reversal can restore exactly what the match was before.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AuditLog, BallEvent, Innings, Match, MatchDeclaration, Stage, User
+from app.db.models import (
+    AuditLog,
+    BallEvent,
+    Innings,
+    Match,
+    MatchDeclaration,
+    RuleSet,
+    Stage,
+    User,
+)
+from app.engine.rules import DEFAULT_RULES
 from app.services.announce import match_audience, say, team_names
 from app.services.chat import ensure_match_rooms
 from app.services.duties import sync_duty
@@ -55,6 +65,31 @@ async def declare_walkover(db: AsyncSession, m: Match, absent_team_id: int, reas
     await db.flush()
     await advance_knockouts(db, m)
     return decl
+
+
+TOSS_OPEN = ("scheduled", "toss")  # the toss has not been confirmed yet
+
+
+async def toss_absent_from(db: AsyncSession, m: Match) -> datetime | None:
+    """When the umpire may declare a captain absent at the toss: the scheduled start plus the rule set's wait.
+    None when the match has no scheduled time or the toss is already settled."""
+    if m.scheduled_at is None or m.status not in TOSS_OPEN:
+        return None
+    rs = await db.get(RuleSet, m.rule_set_id) if m.rule_set_id else None
+    minutes = int({**DEFAULT_RULES, **(rs.config if rs else {})}["toss_timeout_minutes"])
+    return m.scheduled_at + timedelta(minutes=minutes)
+
+
+async def declare_toss_absent(db: AsyncSession, m: Match, team_id: int, by: User, now: datetime | None = None) -> MatchDeclaration:
+    """The umpire (or an admin) says a captain never answered the toss. Recorded as an ordinary walkover."""
+    if m.status not in TOSS_OPEN:
+        raise HTTPException(409, "The toss has already been settled; use the walkover or abandon options instead")
+    due = await toss_absent_from(db, m)
+    if due is None:
+        raise HTTPException(409, "This match has no scheduled start time, so the waiting time cannot be measured; declare a walkover with a reason instead")
+    if (now or datetime.now(UTC)) < due:
+        raise HTTPException(409, f"Wait until {due.strftime('%H:%M UTC')}: the captain has the full waiting time to answer the toss")
+    return await declare_walkover(db, m, team_id, "Captain did not answer the toss within the waiting time", by)
 
 
 async def declare_abandon(db: AsyncSession, m: Match, reason: str, by: User, replay: bool, replay_at: datetime | None) -> MatchDeclaration:

@@ -52,6 +52,7 @@ def summarize(config: dict[str, Any] | None) -> list[dict[str, Any]]:
         ]},
         {"title": "Fair play", "items": [
             "The umpire can apply penalty runs or wickets to a team's total. Penalties never count towards a player's own figures.",
+            f"If a captain has not answered the toss {_plural(c['toss_timeout_minutes'], 'minute')} after the scheduled start, the umpire may declare a walkover against that team. Nothing happens automatically, and an admin can reverse it.",
             f"A team that supplies an umpire loses {_plural(c['umpire_duty_penalty'], 'point')} if that umpire does not turn up.",
         ]},
     ]

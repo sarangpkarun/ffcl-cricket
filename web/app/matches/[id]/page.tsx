@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 import { PlayerPanel } from "@/components/match/PlayerPanel";
 import { Scoreboard } from "@/components/match/Scoreboard";
+import { TossAbsent } from "@/components/match/TossAbsent";
 import { TossPanel } from "@/components/match/TossPanel";
 import { AnalyticsPanel } from "@/components/match/AnalyticsPanel";
 import { DisputePanel } from "@/components/match/DisputePanel";
@@ -114,6 +115,7 @@ function MatchPage() {
       {live.match.status === "completed" && <PotmPanel matchId={match.id} seq={live.match.seq} />}
       {(live.match.status === "completed" || live.match.status === "abandoned") && <DisputePanel matchId={match.id} />}
       <TossPanel live={live} myTeamIds={myTeamIds} onDone={done} />
+      <TossAbsent live={live} onDone={done} />
       {official && <UmpireConsole live={live} lineups={lineups} onDone={done} />}
 
       {live.match.status === "scheduled" && (

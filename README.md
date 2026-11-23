@@ -20,6 +20,9 @@ With the stack running (`make up`, `make migrate`): `cd web && pnpm e2e`. It see
 ## Public site
 Anyone can follow the league without signing in: `/` (current season), `/league` (all seasons), `/league/<season>/...` (fixtures, results, table, stats, rules, teams, players, live matches) and `/league/history`. The pages are server-rendered from the read-only `/public` API and are in `sitemap.xml`. Set `NEXT_PUBLIC_SITE_URL` to the real address; in Docker the web container uses `API_INTERNAL_URL=http://api:8000`. Players can hide their name from their profile; admins can hide a whole season on its setup page.
 
+## Adding players and verifying phone numbers
+There is no SMS provider. In production `OTP_PROVIDER` is `disabled` (the default there), so numbers are verified by an organiser. **Admin, Add players** takes a list (`name,phone,team`), checks every row, and makes one-time invite links (valid 14 days, single use) that create the account, verify the number and join the team. The same screen lists members whose number nobody has verified, with a reason box. If the match umpire finds a captain has not answered the toss after the waiting time (rule `toss_timeout_minutes`, default 15), the match page offers "is absent", which records a walkover.
+
 ## Background worker
 `make up` also starts a `worker` container (`arq app.worker.WorkerSettings`) that sends match reminders, the "toss is due" nudge and the 30-second submission-deadline alert. It is safe to run several.
 

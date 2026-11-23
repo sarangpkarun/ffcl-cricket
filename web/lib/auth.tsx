@@ -13,6 +13,7 @@ type Ctx = {
   canAdmin: (seasonId: number | null | undefined) => boolean; // an admin of this particular season
   login: (email: string, password: string) => Promise<void>;
   register: (d: { name: string; email: string; password: string; phone?: string }) => Promise<void>;
+  acceptInvite: (token: string, email: string, password: string) => Promise<void>;
   logout: (all?: boolean) => Promise<void>;
   reload: () => Promise<void>;
 };
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     reload,
     login: async (email, password) => startSession(await post<Tokens>("/auth/login", { email, password })),
     register: async (d) => startSession(await post<Tokens>("/auth/register", d)),
+    acceptInvite: async (token, email, password) => startSession(await post<Tokens>(`/invites/${encodeURIComponent(token)}/accept`, { email, password })),
     logout: async (all) => {
       const t = loadTokens();
       try {

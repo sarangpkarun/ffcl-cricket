@@ -29,8 +29,8 @@ Defaults I chose (tell me if any are wrong):
 - **Session families.** Every sign-in starts a family; each refresh replaces the token in the family; replaying an already-replaced token revokes the whole family and tells the person.
 - **Deleting a person keeps the league intact.** Personal fields are blanked and the user is marked deleted; matches, balls and awards keep pointing at the row, which now reads "Former player" everywhere (signed-in and public).
 
-## Data model (migration 0014)
-`sessions.family_id` and `sessions.replaced_at`; `users.deleted_at`, `users.phone_verified_by`, `users.phone_verified_at`; `invites(id, token_hash unique, name, phone, team_id, season_id, created_by, created_at, expires_at, used_at, used_by, revoked_at)`; index on `audit_logs.created_at`. The toss timeout is a rule-set setting (`toss_timeout_minutes`, default 15), so it needs no table.
+## Data model (migrations 0014 and 0015)
+Sprint 19 (migration 0014): `users.phone_verified_by`, `users.phone_verified_at`, and `invites(id, token_hash unique, name, phone, team_id, season_id, created_by, created_at, expires_at, used_at, used_by, revoked_at)`; Sprint 20 (migration 0015): `sessions.family_id`, `sessions.replaced_at`, `users.deleted_at`, and an index on `audit_logs.created_at`. The toss timeout is a rule-set setting (`toss_timeout_minutes`, default 15), so it needs no table.
 
 ## Sprints (about 2 weeks)
 

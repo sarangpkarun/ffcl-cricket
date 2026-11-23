@@ -106,7 +106,15 @@ async def require_admin(user: User = Depends(get_current_user), db: AsyncSession
 
 async def season_of(db: AsyncSession, by: str, params: dict[str, Any]) -> int | None:
     """The season a request is about, found from the id in its path. None if the thing does not exist."""
-    from app.db.models import Dispute, Match, PointAdjustment, RosterChange, Team, UmpireDuty
+    from app.db.models import (
+        Dispute,
+        Invite,
+        Match,
+        PointAdjustment,
+        RosterChange,
+        Team,
+        UmpireDuty,
+    )
 
     if by == "season":
         return int(params["season_id"])
@@ -122,6 +130,8 @@ async def season_of(db: AsyncSession, by: str, params: dict[str, Any]) -> int | 
         return await db.scalar(select(Match.season_id).join(UmpireDuty, UmpireDuty.match_id == Match.id).where(UmpireDuty.id == int(params["duty_id"])))
     if by == "roster":
         return await db.scalar(select(Team.season_id).join(RosterChange, RosterChange.team_id == Team.id).where(RosterChange.id == int(params["rc_id"])))
+    if by == "invite":
+        return await db.scalar(select(Invite.season_id).where(Invite.id == int(params["invite_id"])))
     raise ValueError(f"unknown season resolver {by!r}")
 
 

@@ -92,6 +92,8 @@ async def cancel(user: User = Depends(get_current_user), db: AsyncSession = Depe
 
 @router.post("/me/phone-change/otp/request", status_code=204)
 async def send_code(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> None:
+    if not otp.enabled():
+        raise HTTPException(409, otp.DISABLED_MESSAGE)
     r = await _open(db, user)
     if not r or r.status != "approved":
         raise HTTPException(409, "An admin has not approved this change yet")
@@ -123,6 +125,7 @@ async def verify(body: CodeIn, user: User = Depends(get_current_user), db: Async
     rec.consumed_at = datetime.now(UTC)
     old = user.phone
     user.phone, user.phone_verified = r.new_phone, True
+    user.phone_verified_at, user.phone_verified_by = datetime.now(UTC), None
     r.status, r.completed_at = "completed", datetime.now(UTC)
     db.add(AuditLog(actor_id=user.id, action="phone.complete", entity="phone_change", entity_id=r.id,
                     before={"phone": mask_phone(old)}, after={"phone": mask_phone(r.new_phone)}))
@@ -167,8 +170,21 @@ async def admin_approve(rid: int, admin: User = Depends(require_admin), db: Asyn
     r.status, r.decided_by, r.decided_at = "approved", admin.id, datetime.now(UTC)
     db.add(AuditLog(actor_id=admin.id, action="phone.approve", entity="phone_change", entity_id=r.id,
                     after={"new": mask_phone(r.new_phone)}))
-    await tell(db, {r.user_id}, "phone", "Phone change approved",
-               "Open your profile and confirm the code we send to the new number.", "/profile", f"pc:{r.id}:approved")
+    if not otp.enabled():
+        # No codes are sent, so the admin's approval is the verification: the new number takes effect now.
+        person = await db.get(User, r.user_id)
+        assert person is not None
+        old = person.phone
+        person.phone, person.phone_verified = r.new_phone, True
+        person.phone_verified_at, person.phone_verified_by = datetime.now(UTC), admin.id
+        r.status, r.completed_at = "completed", datetime.now(UTC)
+        db.add(AuditLog(actor_id=admin.id, action="phone.complete", entity="phone_change", entity_id=r.id,
+                        before={"phone": mask_phone(old)}, after={"phone": mask_phone(r.new_phone), "verified_by_admin": True}))
+        await tell(db, {r.user_id}, "phone", "Phone number changed", "An organiser approved and verified your new number.",
+                   "/profile", f"pc:{r.id}:approved")
+    else:
+        await tell(db, {r.user_id}, "phone", "Phone change approved",
+                   "Open your profile and confirm the code we send to the new number.", "/profile", f"pc:{r.id}:approved")
     await db.commit()
     await flush_outbox(db)
     return (await _admin_rows(db, [r]))[0]

@@ -155,6 +155,8 @@ async def otp_request(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> None:
+    if not otp.enabled():
+        raise HTTPException(409, otp.DISABLED_MESSAGE)  # nothing is generated or logged
     if user.phone != body.phone:
         raise HTTPException(400, "Phone must match your registered number")
     await throttle("otp-request", str(user.id), 3, 600)  # each request may cost an SMS
@@ -192,6 +194,7 @@ async def otp_verify(
         raise HTTPException(400, "Incorrect code")
     rec.consumed_at = datetime.now(UTC)
     user.phone_verified = True
+    user.phone_verified_at, user.phone_verified_by = datetime.now(UTC), None  # proved with a code, not vouched for by an admin
     await db.commit()
 
 
@@ -199,7 +202,7 @@ async def otp_verify(
 async def me(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> MeOut:
     base = UserOut.model_validate(user).model_dump()
     scope = await admin_scope(db, user.id)
-    return MeOut(**base, roles=sorted(await user_roles(db, user.id)), admin=AdminOut(is_global=scope.is_global, seasons=sorted(scope.seasons)))
+    return MeOut(**base, phone_codes=otp.enabled(), roles=sorted(await user_roles(db, user.id)), admin=AdminOut(is_global=scope.is_global, seasons=sorted(scope.seasons)))
 
 
 @router.patch("/me", response_model=MeOut)

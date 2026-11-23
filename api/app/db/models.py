@@ -37,6 +37,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     phone: Mapped[str | None] = mapped_column(String(20), unique=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    phone_verified_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # the admin who vouched for the number; null = a code proved it
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[str] = mapped_column(String(16), default="active")  # active|suspended|banned
     show_publicly: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # name on the public site
@@ -533,3 +535,22 @@ class DisputeMessage(Base):
     body: Mapped[str] = mapped_column(Text)
     internal: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # admin notes
     created_at: Mapped[datetime] = _now()
+
+
+class Invite(Base):
+    """A one-time link that lets someone an admin imported create their account and join a team.
+    Only a hash of the secret is stored, so a leaked database cannot be used to sign up."""
+
+    __tablename__ = "invites"
+    id: Mapped[int] = _pk()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    name: Mapped[str] = mapped_column(String(120))
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"), index=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), index=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _now()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
