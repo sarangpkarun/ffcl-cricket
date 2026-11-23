@@ -60,13 +60,20 @@ def _top(boards: dict, users: dict, key: str) -> dict | None:
     if not rows:
         return None
     u = users[rows[0]["user_id"]]
-    return {"player": {"id": u.id, "name": u.name}, "value": rows[0]["value"], "detail": rows[0]["detail"]}
+    return {"player": {"id": u.id, "name": u.name, "player_code": u.player_code}, "value": rows[0]["value"], "detail": rows[0]["detail"]}
 
 
 @router.get("/history")
 async def history(_: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> list[dict]:
     """Past seasons (completed or archived), newest first: champion, final table and top performers."""
-    seasons = list(await db.scalars(select(Season).where(Season.status.in_(("completed", "archived"))).order_by(Season.id.desc())))
+    return await history_rows(db)
+
+
+async def history_rows(db: AsyncSession, public_only: bool = False) -> list[dict]:
+    q = select(Season).where(Season.status.in_(("completed", "archived"))).order_by(Season.id.desc())
+    if public_only:
+        q = q.where(Season.is_public.is_(True))
+    seasons = list(await db.scalars(q))
     out = []
     for season in seasons:
         table = await season_table(db, season)
@@ -77,7 +84,7 @@ async def history(_: User = Depends(get_current_user), db: AsyncSession = Depend
                               balls_per_over=bpo, limit=1)
 
         out.append({
-            "season": {"id": season.id, "name": season.name, "status": season.status},
+            "season": {"id": season.id, "name": season.name, "status": season.status, "slug": season.slug},
             "champion": table["season"]["champion"],
             "table": [{"position": r["position"], "team": r["team"]["name"], "played": r["played"], "won": r["won"],
                        "lost": r["lost"], "points": r["points"], "nrr": r["nrr"]} for r in table["rows"]],

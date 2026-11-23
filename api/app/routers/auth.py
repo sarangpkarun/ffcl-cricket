@@ -205,6 +205,8 @@ async def update_me(
     body: ProfileIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)
 ) -> MeOut:
     for k, v in body.model_dump(exclude_unset=True).items():
+        if v is None and k == "show_publicly":
+            continue
         setattr(user, k, v)
     await db.commit()
     return await me(user, db)

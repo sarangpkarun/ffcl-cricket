@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { BottomNav } from "@/components/BottomNav";
+import { Chrome } from "@/components/Chrome";
 import { AuthProvider } from "@/lib/auth";
 import { NotificationsProvider } from "@/lib/notifications";
-import { TopBar } from "@/components/TopBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,8 +17,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FFCL",
-  description: "FFCL digit cricket league",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3100"),
+  title: { default: "FFCL digit cricket league", template: "%s · FFCL" },
+  description: "Live scores, points table, fixtures and stats for the FFCL digit cricket league.",
+  openGraph: { siteName: "FFCL", type: "website" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,10 +32,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <AuthProvider>
           <NotificationsProvider>
-          <TopBar />
-          <main className="flex-1 w-full max-w-md mx-auto px-4 pb-24 pt-4">{children}</main>
-          <Suspense fallback={null}>
-            <BottomNav />
+          <Suspense fallback={<div className="h-12 border-b" />}>
+            <Chrome>{children}</Chrome>
           </Suspense>
           </NotificationsProvider>
         </AuthProvider>

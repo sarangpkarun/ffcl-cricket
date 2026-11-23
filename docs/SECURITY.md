@@ -76,6 +76,18 @@ Accepted for now (Phase 5):
 - Leaderboards, history, the table and player pages are readable by every signed-in user; Phase 4 decides what becomes public.
 - Statistics are computed on each request (no caching). Measured with a 33-match season: p95 under 160 ms for every read endpoint. Add a cache if seasons grow far beyond that.
 
+## Addendum: public site (Sprint 14)
+| # | Finding | Fix or decision |
+|---|---|---|
+| P1 | Opening data to anyone risks leaking private fields or drafts. | A separate `/public` router, never the signed-in endpoints with checks loosened; one place (`services/public.py`) decides how a person may be shown; a test scans every public response for forbidden keys, emails and phone numbers. |
+| P2 | The live view could expose digits before the reveal to an anonymous viewer. | One builder serves everyone; anonymous viewers get the same rule as any spectator and more (even the umpire's "locked" view is hidden). Tested through every over state. |
+| P3 | Free text written for the league (abandonment reasons, penalty reasons) could be personal. | Public views show "Match abandoned" and no penalty or declaration reasons. |
+| P4 | Names of players who do not want to be listed, or who are suspended. | `show_publicly` switch (code only, no id, no page) and suspended players removed everywhere. Tested for rankings, rosters, pages, scorecards and the sitemap. |
+| P5 | Anonymous traffic could overwhelm the API or sockets. | Per-address rate limit, short shared caches, live view keyed by sequence number, anonymous sockets capped per address and in total, polling fallback. |
+| P6 | Server-rendered pages call the API from one address, so one limit would cover every visitor. | The web server forwards `X-Forwarded-For`; the API honours it only when `TRUST_PROXY=true`. Deployment: Nginx must overwrite that header, never pass a client-supplied one. |
+| P7 | Team and player names inside structured data could close the script tag. | The only raw-markup component (`JsonLd`) escapes `<`, `>`, `&` and line separators; a test feeds it a hostile name. The guard test allows no other file. |
+| P8 | Crawlers indexing signed-in pages and API JSON. | `robots.txt` disallows the signed-in routes; unknown pages are marked not indexable. |
+
 ## Re-running the checks
 
 ```

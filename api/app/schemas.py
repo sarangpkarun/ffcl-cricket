@@ -46,6 +46,7 @@ class UserOut(ORM):
     phone_verified: bool
     avatar_url: str | None
     status: str
+    show_publicly: bool
 
 
 class UserLite(ORM):
@@ -62,6 +63,7 @@ class MeOut(UserOut):
 
 class ProfileIn(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
+    show_publicly: bool | None = None
     avatar_url: str | None = Field(default=None, max_length=500)
 
     @field_validator("avatar_url")
@@ -90,6 +92,8 @@ class SeasonIn(BaseModel):
 
 class SeasonPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
+    slug: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
+    is_public: bool | None = None
     status: str | None = Field(default=None, pattern=r"^(draft|active|completed|archived)$")
     starts_on: datetime | None = None
     ends_on: datetime | None = None
@@ -102,6 +106,8 @@ class SeasonOut(ORM):
     starts_on: datetime | None
     ends_on: datetime | None
     rule_set_id: int | None
+    slug: str
+    is_public: bool
 
 
 class TeamIn(BaseModel):

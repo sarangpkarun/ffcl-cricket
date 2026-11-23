@@ -34,6 +34,8 @@ services:
   web:
     build: ./web
     env_file: .env
+    environment:
+      API_INTERNAL_URL: http://api:8000  # server-rendered public pages call the API over the compose network
     ports: ["3100:3000"]
     volumes: ["./web:/app", "/app/node_modules", "/app/.next"]
     depends_on: [api]

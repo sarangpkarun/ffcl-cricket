@@ -119,10 +119,11 @@ export type Me = {
   email: string;
   phone: string | null;
   phone_verified: boolean;
+  show_publicly: boolean;
   roles: string[];
   status: string;
 };
-export type Season = { id: number; name: string; status: string };
+export type Season = { id: number; name: string; status: string; slug?: string; is_public?: boolean };
 export type Team = {
   id: number;
   season_id: number;

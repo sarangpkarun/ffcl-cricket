@@ -4,6 +4,16 @@ import type { Browser, Page } from "@playwright/test";
 export const API = process.env.E2E_API_URL ?? "http://localhost:8000";
 const ROOT = process.env.E2E_ROOT ?? `${process.cwd()}/..`;
 export const run = Date.now();
+
+/** Create an admin account. Normally inside the api container; with E2E_LOCAL_API=1 straight from this checkout. */
+export function createAdmin(email: string, name: string) {
+  if (process.env.E2E_LOCAL_API) {
+    const env = { ...process.env, DATABASE_URL: process.env.DATABASE_URL ?? "postgresql+asyncpg://ffcl:ffcl@localhost:55433/ffcl", REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:56379/0" };
+    execSync(`uv run python -m app.create_admin ${email} ${PASSWORD} "${name}"`, { cwd: `${ROOT}/api`, env, stdio: "ignore" });
+  } else {
+    execSync(`docker compose exec -T api python -m app.create_admin ${email} ${PASSWORD} "${name}"`, { cwd: ROOT });
+  }
+}
 export const PASSWORD = "password123";
 
 export async function call<T>(path: string, method: string, body?: unknown, token?: string): Promise<T> {
@@ -44,7 +54,7 @@ export async function loginPage(browser: Browser, u: U, path: string): Promise<P
 /** A season with two teams of four, a match with an umpire and lineups. Optionally toss + start. */
 export async function seed(opts: { start: boolean }) {
   const adminEmail = `root${run}${n}@t.io`;
-  execSync(`docker compose exec -T api python -m app.create_admin ${adminEmail} ${PASSWORD} "E2E Admin"`, { cwd: ROOT });
+  createAdmin(adminEmail, "E2E Admin");
   const admin = (await call<{ access_token: string }>("/auth/login", "POST", { email: adminEmail, password: PASSWORD })).access_token;
   const ump = await user("Ump");
   await call(`/users/${ump.id}/roles`, "POST", { role: "umpire" }, admin);
@@ -82,7 +92,7 @@ export async function seed(opts: { start: boolean }) {
 /** A season with 4 teams of 3 players, 3 umpires and an admin. No matches yet. */
 export async function seedLeague() {
   const adminEmail = `lroot${run}${n}@t.io`;
-  execSync(`docker compose exec -T api python -m app.create_admin ${adminEmail} ${PASSWORD} "League Admin"`, { cwd: ROOT });
+  createAdmin(adminEmail, "League Admin");
   const admin = (await call<{ access_token: string }>("/auth/login", "POST", { email: adminEmail, password: PASSWORD })).access_token;
   const umpires = [await user("Umpire"), await user("Umpire"), await user("Umpire")];
   for (const u of umpires) await call(`/users/${u.id}/roles`, "POST", { role: "umpire" }, admin);

@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     otp_provider: str = "console"
     environment: str = "development"  # set to "production" on a real server
     auth_rate_limits_enabled: bool = True  # login / register / OTP request throttling
+    public_rate_limit_per_minute: int = 300  # per address, anonymous readers (0 turns it off)
+    public_cache_enabled: bool = True  # shared short-lived cache for public reads (tests turn it off)
+    public_ws_per_ip: int = 5  # simultaneous anonymous live sockets per address
+    public_ws_total: int = 3000  # and across the whole server
     trust_proxy: bool = False  # honour X-Forwarded-For (only behind a proxy you control)
 
 

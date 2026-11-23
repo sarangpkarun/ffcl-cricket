@@ -25,6 +25,7 @@ from app.routers import (
     notifications,
     phone_changes,
     play,
+    public,
     roster,
     seasons,
     seasons_admin,
@@ -34,6 +35,7 @@ from app.routers import (
     users,
     ws,
     ws_me,
+    ws_public,
     ws_rooms,
 )
 
@@ -52,7 +54,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation,
-          notifications, ws_me, admin_users, fixtures, standings, declarations, duties, adjustments, stats, seasons_admin, roster, phone_changes, admin_rules, admin_audit, exports):
+          notifications, ws_me, admin_users, fixtures, standings, declarations, duties, adjustments, stats, seasons_admin, roster, phone_changes, admin_rules, admin_audit, exports, public, ws_public):
     app.include_router(r.router)
 
 

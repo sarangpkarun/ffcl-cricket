@@ -13,6 +13,7 @@ function sources(dir: string): string[] {
 test("no component renders raw HTML or evaluates strings", () => {
   const files = ["app", "components", "lib"].flatMap((d) => sources(join(process.cwd(), d)));
   expect(files.length).toBeGreaterThan(20);
-  const bad = files.filter((f) => /dangerouslySetInnerHTML|\.innerHTML\s*=|\beval\(|new Function\(|document\.write\(/.test(readFileSync(f, "utf8")));
+  const allowed = join(process.cwd(), "components", "JsonLd.tsx"); // escaped JSON for search engines, tested in jsonld.test.tsx
+  const bad = files.filter((f) => f !== allowed && /dangerouslySetInnerHTML|\.innerHTML\s*=|\beval\(|new Function\(|document\.write\(/.test(readFileSync(f, "utf8")));
   expect(bad).toEqual([]);
 });

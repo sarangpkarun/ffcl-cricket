@@ -17,6 +17,9 @@ Then sign in at http://localhost:3100/login and open Profile → Admin dashboard
 ## End-to-end browser test
 With the stack running (`make up`, `make migrate`): `cd web && pnpm e2e`. It seeds a season through the API, then drives an umpire and two players on phone-sized Chrome windows through one over and checks the digits stay hidden until the reveal.
 
+## Public site
+Anyone can follow the league without signing in: `/` (current season), `/league` (all seasons), `/league/<season>/...` (fixtures, results, table, stats, rules, teams, players, live matches) and `/league/history`. The pages are server-rendered from the read-only `/public` API and are in `sitemap.xml`. Set `NEXT_PUBLIC_SITE_URL` to the real address; in Docker the web container uses `API_INTERNAL_URL=http://api:8000`. Players can hide their name from their profile; admins can hide a whole season on its setup page.
+
 ## Background worker
 `make up` also starts a `worker` container (`arq app.worker.WorkerSettings`) that sends match reminders, the "toss is due" nudge and the 30-second submission-deadline alert. It is safe to run several.
 

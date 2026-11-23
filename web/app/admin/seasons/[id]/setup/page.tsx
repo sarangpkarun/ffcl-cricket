@@ -70,17 +70,27 @@ function DraftRow({ f, umpires, onChange }: { f: Fixture; umpires: Umpire[]; onC
 }
 
 function SeasonAdmin({ id }: { id: string }) {
-  const [status, setStatus] = useState<string | null>(null);
+  const [season, setSeason] = useState<Season | null>(null);
+  const status = season?.status ?? null;
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
-  useEffect(() => { api<{ status: string }>(`/seasons/${id}`).then((s) => setStatus(s.status)).catch(() => {}); }, [id]);
+  useEffect(() => { api<Season>(`/seasons/${id}`).then(setSeason).catch(() => {}); }, [id]);
   const act = async (fn: () => Promise<unknown>) => {
     setErr(null);
-    try { await fn(); setStatus((await api<{ status: string }>(`/seasons/${id}`)).status); setConfirm(false); } catch (e) { setErr((e as Error).message); }
+    try { await fn(); setSeason(await api<Season>(`/seasons/${id}`)); setConfirm(false); } catch (e) { setErr((e as Error).message); }
   };
   return (
     <section aria-label="Season archive and exports" className="space-y-3 rounded-lg border p-4">
       <h2 className="font-medium">Archive and exports</h2>
+      {season?.slug && (
+        <div className="space-y-1 rounded-md bg-muted p-3 text-sm">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={!!season.is_public} onChange={(e) => act(() => patch(`/seasons/${id}`, { is_public: e.target.checked }))} />
+            Show this season on the public site
+          </label>
+          <p className="text-xs text-muted-foreground">Public address: <Link className="underline" href={`/league/${season.slug}`}>/league/{season.slug}</Link>{!season.is_public && " (hidden)"}</p>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {(["fixtures", "table", "players"] as const).map((k) => (
           <button key={k} className={btnGhost} onClick={() => act(() => download(`/seasons/${id}/export/${k}.csv`, `season-${id}-${k}.csv`))}>Download {k} (CSV)</button>

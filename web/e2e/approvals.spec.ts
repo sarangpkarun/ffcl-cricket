@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { loginPage, run as runId, seedLeague, user } from "./helpers";
 
@@ -50,10 +51,14 @@ test("roster change, phone change, rule version, audit log, archive, exports and
   await pl.reload();
   await phone.getByRole("button", { name: "Send code to the new number" }).click();
   await expect(phone.getByLabel("6-digit code")).toBeVisible({ timeout: 10_000 });
-  const logs = execSync("docker compose logs api --since 2m 2>&1", { cwd: ROOT, encoding: "utf8" });
-  const codes = [...logs.matchAll(new RegExp(`OTP for \\${newPhone}: (\\d{6})`, "g"))];
-  expect(codes.length).toBeGreaterThan(0);
-  await phone.getByLabel("6-digit code").fill(codes[codes.length - 1][1]);
+  const readCode = () => {
+    const logs = process.env.E2E_API_LOG ? readFileSync(process.env.E2E_API_LOG, "utf8") : execSync("docker compose logs api --since 2m 2>&1", { cwd: ROOT, encoding: "utf8" });
+    const codes = [...logs.matchAll(new RegExp(`OTP for \\${newPhone}: (\\d{6})`, "g"))];
+    return codes.length ? codes[codes.length - 1][1] : null;
+  };
+  await expect.poll(readCode, { timeout: 10_000, message: "the code appears in the API log" }).not.toBeNull(); // logs can lag a moment
+  const code = readCode()!;
+  await phone.getByLabel("6-digit code").fill(code);
   await phone.getByRole("button", { name: "Confirm new number" }).click();
   await expect(pl.getByText(newPhone).first()).toBeVisible({ timeout: 10_000 });
 

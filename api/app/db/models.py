@@ -39,6 +39,7 @@ class User(Base):
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     avatar_url: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[str] = mapped_column(String(16), default="active")  # active|suspended|banned
+    show_publicly: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # name on the public site
     created_at: Mapped[datetime] = _now()
 
 
@@ -92,6 +93,9 @@ class Season(Base):
     rule_set_id: Mapped[int | None] = mapped_column(ForeignKey("rule_sets.id"))
     champion_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    slug: Mapped[str] = mapped_column(String(100), unique=True)  # the season's address on the public site
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    cloned_from_id: Mapped[int | None] = mapped_column(ForeignKey("seasons.id"))
 
 
 class Team(Base):

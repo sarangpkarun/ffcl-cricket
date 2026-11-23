@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { btnCls, btnGhost, ErrorText, Field, RequireAuth } from "@/components/ui-bits";
-import { api, del, post } from "@/lib/api";
+import { api, del, patch, post } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 type PhoneChange = { id: number; new_phone: string; status: string; reason: string; decision_note: string | null } | null;
@@ -96,6 +96,13 @@ function Profile() {
         </section>
       )}
       <ErrorText msg={err} />
+      <section aria-label="Privacy" className="space-y-2 rounded-lg border p-4">
+        <h2 className="font-medium">Public site</h2>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" checked={me.show_publicly} onChange={(e) => run(async () => { await patch("/me", { show_publicly: e.target.checked }); await reload(); })} />
+          <span>Show my name on the public site. If you turn this off, you appear as your player ID ({me.player_code}) and have no public page.</span>
+        </label>
+      </section>
       {me.phone_verified && <PhoneChange onChanged={() => void reload()} />}
 
       {isAdmin && <Link href="/admin" className={`${btnGhost} block text-center`}>Admin dashboard</Link>}

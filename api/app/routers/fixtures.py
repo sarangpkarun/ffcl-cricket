@@ -230,19 +230,11 @@ async def publish(season_id: int, body: PublishIn, admin: User = Depends(require
     return {"published": len(drafts), "notified": notified, "without_umpire": [m.match_no for m in drafts if m.umpire_id is None]}
 
 
-@router.get("/seasons/{season_id}/fixtures")
-async def list_fixtures(
-    season_id: int,
-    status: str | None = Query(default=None, pattern="^(upcoming|live|completed)$"),
-    team_id: int | None = None,
-    include_drafts: bool = False,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-) -> list[dict]:
-    """The fixture list with team names, ready to show. Drafts appear only for admins who ask."""
-    await _season(db, season_id)
+async def fixture_rows(db: AsyncSession, season_id: int, status: str | None = None, team_id: int | None = None,
+                       drafts: bool = False, limit: int | None = None) -> list[dict]:
+    """The fixture list with team names. Drafts are included only when asked for (admins)."""
     q = select(Match).where(Match.season_id == season_id)
-    if not (include_drafts and await is_admin(db, user)):
+    if not drafts:
         q = q.where(Match.published_at.is_not(None))
     if team_id is not None:
         q = q.where((Match.team_a_id == team_id) | (Match.team_b_id == team_id))
@@ -258,6 +250,8 @@ async def list_fixtures(
     umpires = {u.id: u.name for u in await db.scalars(select(User).where(User.id.in_(ump_ids)))} if ump_ids else {}
     far = datetime.max.replace(tzinfo=UTC)
     matches.sort(key=lambda m: (m.scheduled_at or far, m.match_no), reverse=(status == "completed"))
+    if limit is not None:
+        matches = matches[:limit]
     return [{
         "id": m.id, "match_no": m.match_no, "round_label": m.round_label, "status": m.status, "paused": m.paused,
         "scheduled_at": m.scheduled_at.isoformat() if m.scheduled_at else None,
@@ -267,6 +261,20 @@ async def list_fixtures(
         "umpire_id": m.umpire_id, "umpire": umpires.get(m.umpire_id or 0),
         "result": m.result_text, "winner_team_id": m.winner_team_id,
     } for m in matches]
+
+
+@router.get("/seasons/{season_id}/fixtures")
+async def list_fixtures(
+    season_id: int,
+    status: str | None = Query(default=None, pattern="^(upcoming|live|completed)$"),
+    team_id: int | None = None,
+    include_drafts: bool = False,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    """The fixture list with team names, ready to show. Drafts appear only for admins who ask."""
+    await _season(db, season_id)
+    return await fixture_rows(db, season_id, status, team_id, drafts=include_drafts and await is_admin(db, user))
 
 
 @router.get("/seasons/{season_id}/stages")

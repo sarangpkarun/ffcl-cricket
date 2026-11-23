@@ -117,6 +117,7 @@ async def _clean_redis():
     with contextlib.suppress(Exception):  # Redis is optional for tests that don't touch it
         keys = [k async for k in r.scan_iter("rl:*")] + [k async for k in r.scan_iter("presence:*")] + [
             k async for k in r.scan_iter("typing:*")
+        ] + [k async for k in r.scan_iter("pub:*")] + [k async for k in r.scan_iter("ws:public:*")
         ]
         if keys:
             await r.delete(*keys)
@@ -144,3 +145,5 @@ async def ws_url():
 def _auth_limits_off(monkeypatch):
     """Most tests register dozens of users from one address; the limits have their own tests."""
     monkeypatch.setattr(settings, "auth_rate_limits_enabled", False)
+    monkeypatch.setattr(settings, "public_cache_enabled", False)  # the cache has its own test
+    monkeypatch.setattr(settings, "public_rate_limit_per_minute", 0)  # and so does the rate limit

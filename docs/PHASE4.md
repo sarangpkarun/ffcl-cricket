@@ -44,7 +44,7 @@ Defaults I chose (tell me if any are wrong):
 
 ## Sprints (about 5 weeks)
 
-### Sprint 14: Public API and public site (weeks 1 and 2)
+### Sprint 14: Public API and public site (weeks 1 and 2) ✅ done
 - Migration 0011. Season slugs and `is_public`; admin toggle; slug shown in admin season setup.
 - `services/live_view.py` extracted from `routers/live.py`; `routers/public.py` with: `/public/seasons`, `/public/seasons/{slug}` (overview), `/fixtures`, `/results`, `/standings`, `/bracket`, `/leaderboards`, `/teams/{id}`, `/players/{id}`, `/history`, `/rules` (plain-language rule summary built from the effective config), `/public/matches/{id}/live`. Drafts, unpublished seasons and hidden players excluded. IP rate limit, cache headers, Redis cache for heavy reads.
 - Anonymous live updates: read-only socket `/ws/public/matches/{id}` that carries only sequence numbers (clients refetch), capped per IP, with 10-second polling as the fallback.
@@ -116,3 +116,27 @@ A signed-out request for a draft fixture, a draft season, a hidden or suspended 
 - Analytics reconcile with scorecards and never reveal digit habits during a live season.
 - Two seasons run side by side with season-scoped admins, and a scoped admin cannot touch another season.
 - Accessibility, performance and SEO checks pass; tests, lint, browser tests and the load tests are green; documented in `docs/PHASE4.md`.
+
+## Sprint 14 outcome
+Built:
+- **Public API** (`/public/*`, `routers/public.py`): seasons list and overview, fixtures, standings, bracket, leaderboards, rules in plain language, history, team and player pages, match with live view, and a sitemap feed. It calls the same service functions as the signed-in API, so numbers cannot differ (a test compares the two), and then removes everything private. No login is needed; a signed-in user can call it too.
+- **One live builder** (`services/live_view.py::build_live`) now serves both the signed-in `/matches/{id}/live` and the public one. An anonymous viewer gets no "your" data, no unrevealed digits (even while the umpire sees them locked), names as the public may see them, no free-text reasons and no umpire id.
+- **Privacy** (`services/public.py`): a player can switch off "show my name on the public site" on the profile page; they then appear as their player code with no id and no page. Suspended or banned players are removed from rankings, rosters and pages. Draft matches, hidden seasons, chat, emails and phones never appear; a test scans every public response for forbidden keys, emails and phone numbers. The free-text reason of an abandoned match is replaced by "Match abandoned" publicly.
+- **Season slugs and visibility** (migration 0011): every season has a readable address (`/league/ffcl-season-24`) that never changes when the season is renamed (admins can edit it; reserved words and clashes are refused). Seasons start public unless they are drafts, a draft that goes live becomes public, and admins can hide a season with a checkbox on the season setup page.
+- **Abuse protection**: per-address rate limit (default 300 a minute, setting `public_rate_limit_per_minute`), `Cache-Control` headers, a shared 10 to 60 second Redis cache for the heavier reads, and the live view cached by the match's sequence number so a change shows at once while a crowd shares one build. The anonymous live socket (`/ws/public/matches/{id}`) carries only "changed, seq N", is capped at 5 per address and 3,000 in total (Redis counters, released on close), refuses drafts and hidden seasons, and the page falls back to polling every 8 seconds if the socket is unavailable.
+- **Public site** (Next.js server components that stream fresh data at request time, so search engines receive the full page): landing page at `/` for signed-out visitors (signed-in users still get their dashboard), `/league` (seasons), `/league/[slug]` (overview: live now, next matches, latest results, table snapshot, leaders), fixtures, results, table with knockouts, stats, rules, team, player and match pages, and `/league/history`. A match page updates itself live. Visitors see times in their own time zone.
+- **Shared components** extracted from the signed-in pages and used by both sites: points table, leaderboards, player figures and match history, knockout cards.
+- **SEO and sharing**: titles and descriptions per page, canonical links, `sitemap.xml` (seasons, teams, matches, visible players), `robots.txt`, share images for the site and for each match (teams, score, result), JSON-LD `SportsEvent` on match pages.
+- Migration 0011 (`seasons.slug`, `is_public`, `cloned_from_id`; `users.show_publicly`). Existing seasons were given slugs and made public unless they were drafts.
+
+Tests: 17 public API tests (visibility, slugs, parity with the signed-in numbers, privacy, no private data anywhere, digits hidden until the reveal, abandoned reason, drafts, sitemap, rate limit and cache headers, cache behaviour, history, the anonymous socket and its limits), 2 plain-language rules tests, 1 JSON-LD escaping test, and a browser test (signed-out: page source holds the content, table, privacy, a live match that updates by itself while digits stay hidden, sitemap and robots, a signed-in user still gets the dashboard, an admin hides the season).
+
+Things the tests found:
+- The browser's own 2-second HTTP cache served the live JSON after a change event, so a page could sit on stale data. The page's own refresh now bypasses the browser cache.
+- The security guard that forbids raw HTML also blocked JSON-LD. It now allows exactly one file, `components/JsonLd.tsx`, which escapes everything that could break out of the script tag, and a test proves hostile names cannot.
+
+Decisions and limits:
+- Player pages on the public site are per season (a player's other public seasons are linked); there is no combined career page yet.
+- Server-rendered pages forward the visitor's address (`X-Forwarded-For`) so the rate limit applies per visitor, not per web server. In production run behind Nginx that sets this header and set `TRUST_PROXY=true`.
+- In Docker the web service reaches the API at `API_INTERNAL_URL=http://api:8000`; `NEXT_PUBLIC_SITE_URL` sets the public address used in the sitemap and share cards.
+- Unknown seasons or matches show a "not found" page, but because pages stream, the HTTP status is 200; the page is marked not indexable.
