@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.core.config import assert_production_safe, settings
+from app.core.config import allowed_origins, assert_production_safe, settings
 from app.db.session import engine
 from app.routers import (
     adjustments,
@@ -28,6 +28,7 @@ from app.routers import (
     notifications,
     phone_changes,
     play,
+    privacy,
     public,
     push,
     roster,
@@ -53,12 +54,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="FFCL API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=sorted(allowed_origins()),
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 for r in (auth, users, seasons, teams, matches, play, live, ws, chat, ws_rooms, moderation,
-          notifications, ws_me, admin_users, fixtures, standings, declarations, duties, adjustments, stats, seasons_admin, roster, phone_changes, admin_rules, admin_audit, exports, public, ws_public, push, disputes, analytics, invites):
+          notifications, ws_me, admin_users, fixtures, standings, declarations, duties, adjustments, stats, seasons_admin, roster, phone_changes, admin_rules, admin_audit, exports, public, ws_public, push, disputes, analytics, invites, privacy):
     app.include_router(r.router)
 
 

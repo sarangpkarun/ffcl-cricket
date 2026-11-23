@@ -15,7 +15,7 @@ regression test (named in the last column) so it cannot quietly come back.
 | 4 | Medium | OTP requests were unlimited (SMS flooding and cost) and registration was unthrottled. | 3 OTP requests per user per 10 minutes; 10 registrations per address per hour. | `test_registration_and_otp_requests_are_rate_limited` |
 | 5 | Medium | Login response time revealed which emails have accounts. | A throwaway password hash is checked for unknown emails, so both paths do the same work. | `test_unknown_email_costs_the_same_work_as_a_known_one` |
 | 6 | Medium | Several free-text fields and the digit list had no length cap. | Reasons are limited to 500 characters; digit input to 6 values / 40 characters. | `test_free_text_and_digit_fields_are_bounded` |
-| 7 | Low | `avatar_url` accepted any scheme (`javascript:`, `data:`). | Only `http(s)` URLs. | `test_avatar_must_be_a_web_url` |
+| 7 | Low | `avatar_url` accepted any scheme (`javascript:`, `data:`). | Only `http(s)` URLs at the time; the unused field was removed in Sprint 20. | (removed with the field) |
 | 8 | Medium | A production server could start with the development JWT secret or with rate limits switched off. | Startup refuses (`ENVIRONMENT=production`) unless `JWT_SECRET` is strong and limits are on. | `test_production_refuses_the_development_secret` |
 | 9 | High (availability) | **Found by the load test.** Every open WebSocket held a Redis connection from the same pool as ordinary commands, capped at 100. A few hundred sockets starved publishing, rate limiting and presence, and live updates silently stopped. | Subscriptions use their own pool; commands use a bounded pool that waits for a free connection instead of failing. Socket helper tasks now log why they died. | `tests/test_redis_pools.py` |
 | 10 | Medium | **Found by the load test.** Two identical chat sends or reaction taps at the same instant returned HTTP 500 (the recovery path read objects SQLAlchemy had expired on rollback). | Recovery uses plain values captured beforehand. | `test_simultaneous_identical_sends_collapse_to_one_message`, `test_simultaneous_reaction_taps_never_error` |
@@ -43,18 +43,25 @@ event loop; the test suite refuses to run unless `DATABASE_URL` is set explicitl
   with the actor and reason.
 - **Uploads:** there are none (images and stickers were dropped), so there is no file-upload attack surface.
 
-## Accepted for now, to finish in Phase 5 (launch hardening)
+## Accepted risks, after the Phase 5 review
 
-| Risk | Why it is acceptable now | Plan |
+Every item that was "accepted for now" is either closed in the app, still accepted with a reason, or moved to the deployment checklist (it cannot be fixed inside the app).
+
+| Risk | Status | Notes |
 |---|---|---|
-| Access and refresh tokens live in `localStorage`, so a script injection would expose them. | No injection path was found (see XSS above) and nothing renders raw HTML. | Add a strict Content-Security-Policy; consider moving the refresh token to an HttpOnly cookie. |
-| No refresh-token reuse detection (a stolen, already-rotated token is simply refused). | Rotation already invalidates the old token. | Revoke the whole session family when a rotated token is replayed. |
-| Rate limiting trusts the connecting address. Behind a proxy that is the proxy's address. | Single-host development. | Set `TRUST_PROXY=true` only behind Nginx that overwrites `X-Forwarded-For`. |
-| HTTPS, HSTS, security headers, request-body size limits. | Handled by the reverse proxy, which is Phase 5. | Nginx config with TLS, `client_max_body_size`, security headers. |
-| API container runs as root with auto-reload. | Development image. | Separate production image: non-root user, no `--reload`, several workers. |
-| Redis and Postgres use development credentials and no TLS. | Local only. | Strong secrets, network isolation, TLS, least-privilege database role. |
-| ~~OTP codes are written to the log (console provider).~~ **Closed in Sprint 19.** | Production now runs with codes disabled (nothing generated, nothing logged) and the startup guard refuses the console provider; numbers are verified by an admin. | A real SMS provider can be added behind `OtpProvider` later. |
-| Dependency audits are run by hand. | Both are clean today. | Add `pnpm audit --prod` and `pip-audit` to CI. |
+| Tokens live in `localStorage`, so a script injection would expose them. | **Reduced, re-accepted.** | A Content-Security-Policy now blocks every script, frame, plugin and form target that is not ours; nothing renders raw HTML (a test forbids it); access tokens last 10 minutes; refresh-token replay is detected and a "where you are signed in" list lets people end sign-ins. An HttpOnly cookie would mean rewriting sign-in for the web and every socket, for a risk these controls already cover. Revisit if the app ever renders user-supplied HTML. |
+| `script-src` has `'unsafe-inline'`. | **Accepted.** | Next.js puts small inline scripts in each page. A per-request nonce would make every page dynamic and lose the static and partially prerendered public pages. The inline allowance matters only if an attacker can inject markup, and none can be rendered. |
+| No refresh-token reuse detection. | **Closed (Sprint 20).** | Each sign-in is a family; a replayed spent token ends the whole family and notifies the person (see S9). |
+| WebSockets did not check where the page came from. | **Closed (Sprint 20).** | Every socket refuses a browser page from an origin not in `CORS_ORIGINS` (see S10). |
+| CORS allowed every method and header. | **Closed (Sprint 20).** | Only the needed methods and headers; production refuses a wildcard or non-https origin. |
+| OTP codes written to the log. | **Closed (Sprint 19).** | See V1. |
+| `avatar_url` could point anywhere (tracking). | **Closed (Sprint 20).** | The field was unused and is removed. Team `logo_url` is also an outside address; the app does not show it, and the CSP blocks outside images anyway. |
+| No way to leave or take your data. | **Closed (Sprint 20).** | See S11. |
+| Dependency audits run by hand. | **Closed (Sprint 20).** | `pip-audit` and `pnpm audit --prod` run in CI. |
+| Rate limiting trusts the connecting address; behind a proxy that is the proxy's. | **Deployment.** | Set `TRUST_PROXY=true` only behind a proxy that overwrites `X-Forwarded-For`. |
+| HTTPS, HSTS, request-body size limits. | **Deployment.** | The reverse proxy's job (checklist in docs/PHASE5.md). The app already sends the other security headers. |
+| API container runs as root with auto-reload; web runs the dev server. | **Deployment.** | Production images (checklist). |
+| Redis and Postgres use development credentials and no TLS. | **Deployment.** | Strong secrets, private network, least-privilege database role (checklist). |
 
 ## Addendum: Phase 3 review (Sprint 13)
 Reviewed every endpoint added in Phase 3 (fixtures, results, standings, walkovers, duties, adjustments, statistics, player of the match, roster and phone changes, archive, rule versions, audit log, exports) for authorisation, input handling and data exposure.
@@ -128,7 +135,7 @@ Accepted for now (Phase 5):
 | S7 | Public load amplification: every public page prefetched the pages it links to, each costing server and API work. | Prefetching is off on the public site (transfer halved) and the public load test shows 200 viewers and 40 readers served with p95 230 ms. |
 | S8 | Share previews for bots that ignore streamed metadata. | Metadata is in the head for every visitor (tested with a link-preview user agent). |
 
-Left for Phase 5 (launch): real SMS and email providers, backups and a restore drill, monitoring and alerting, staging and a pilot with real teams, and a second admin so a recused admin never leaves a dispute with nobody to decide it.
+Left for launch (yours, listed in docs/PHASE5.md): a real SMS provider if wanted, backups and a restore drill, monitoring and alerting, staging and a pilot with real teams, and a second admin so a recused admin never leaves a dispute with nobody to decide it.
 
 ## Addendum: Phase 5, Sprint 19 (verification, invites, toss timeout)
 
@@ -139,6 +146,20 @@ Left for Phase 5 (launch): real SMS and email providers, backups and a restore d
 | V3 | A leaked invite link. | A random 192-bit secret, only its hash stored; single use (row lock, tested with four simultaneous attempts); expires in 14 days; revocable; reissuing revokes the old link; the page reveals only the name, team, season and the last two digits of the number; accepting is throttled per address; every step is audited. |
 | V4 | A bulk import abusing the system. | At most 500 rows and 200 KB, creation throttled per admin, teams cannot be over-filled, duplicate and already-registered numbers are refused, names with control or direction-changing characters are refused, and exports defuse formula-looking names. |
 | V5 | An umpire wrongly ending a match. | The toss-absent action is allowed only after the scheduled start plus the rule's wait, only to the match umpire or season admins, only while the toss is unsettled, goes through the ordinary walkover (audited, announced) and an admin can reverse it. |
+
+## Addendum: Phase 5, Sprint 20 (security and privacy)
+
+| # | Risk | Control |
+|---|---|---|
+| S9 | A stolen refresh token used after the real owner has rotated it. | Every sign-in is a family of tokens. A refresh swaps the token (the old one is marked replaced). Replaying a replaced token more than 10 seconds later revokes the whole family, notifies the person (kind `security`) and is audited; within 10 seconds it is only refused (two tabs racing; the row is locked so exactly one wins). Logging out is a plain end, not a replay. Tested including a simultaneous race. |
+| S10 | Cross-site WebSocket hijacking: another website opening our sockets with a visitor's browser. | Every socket (`/ws/me`, match, room, public) closes the handshake with 403 when an `Origin` header is present and not in `CORS_ORIGINS`. Clients that send no Origin (not browsers) are still held to the token on the private sockets. CORS allows only the needed methods and headers, and production refuses a wildcard or `http://` origin. |
+| S11 | Leaving the league, and data you cannot see. | Delete my account needs the password, refuses people who must hand over a role first (admin, captain, umpire of or in the lineup of an unfinished match), blanks name, email, phone and password, ends every sign-in, removes push devices, notifications and preferences, cancels pending requests and invites, and keeps the row as "Former player" so results are unchanged (tested on the table, leaderboards, scorecards and the public site). Download my data returns everything held about the person, not other people's data, with no secrets (no password hash or tokens), and is rate limited. |
+| S12 | Text that hides itself (right-to-left override, zero-width and control characters) in names, team names, chat and disputes. | One shared check rejects them (`core/text.py`); line breaks stay allowed in messages. |
+| S13 | Sessions and codes piling up. | A nightly job removes expired one-time codes, expired sign-ins (kept a week past expiry so a replay is still noticed), old ended sign-ins, used or expired invites, and audit entries older than `AUDIT_RETENTION_DAYS` (default two years; 0 keeps them). |
+| S14 | Content-Security-Policy and headers. | `default-src 'self'`, no outside scripts, frames (`frame-ancestors 'none'`), plugins or form targets, `connect-src` limited to our API, plus nosniff, `X-Frame-Options`, referrer and permissions policies. A browser test visits about thirty screens signed out, as a player and as an admin and fails on any violation, and proves an outside script and frame are refused. |
+| S15 | Rate-limit budgets. | Checked per route group: sign-in, registration, one-time codes, phone changes, push registration and test, disputes and their messages, chat sends, reactions and reports, invite creation, preview, lookup and acceptance, data download, account deletion and public reads each have a limit and a test. |
+
+Retention periods: one-time codes a day after expiry; sign-ins a week after expiry; invites 90 days after use or expiry; read notifications 90 days; audit entries two years; match records for as long as the league keeps the season.
 
 ## Re-running the checks
 

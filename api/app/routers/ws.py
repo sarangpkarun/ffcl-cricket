@@ -9,6 +9,7 @@ import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.origin import refuse_foreign
 from app.core.security import decode_access_token
 from app.db.models import Match, Session, User
 from app.db.session import SessionLocal, get_session
@@ -82,6 +83,8 @@ def log_task_failures(name: str, tasks: list[asyncio.Task]) -> None:
 
 @router.websocket("/ws/matches/{match_id}")
 async def match_socket(ws: WebSocket, match_id: int) -> None:
+    if await refuse_foreign(ws):
+        return
     await ws.accept()
     token = await receive_token(ws)
     async with ws_db(ws) as db:

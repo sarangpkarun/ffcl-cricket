@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.text import single_line
+
 
 class ORM(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -12,6 +14,14 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     phone: str | None = Field(default=None, pattern=r"^\+?[0-9]{8,15}$")
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        v = single_line(v)
+        if not v:
+            raise ValueError("Name is empty")
+        return v
 
 
 class LoginIn(BaseModel):
@@ -44,7 +54,6 @@ class UserOut(ORM):
     email: str
     phone: str | None
     phone_verified: bool
-    avatar_url: str | None
     status: str
     show_publicly: bool
 
@@ -73,14 +82,11 @@ class MeOut(UserOut):
 class ProfileIn(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     show_publicly: bool | None = None
-    avatar_url: str | None = Field(default=None, max_length=500)
 
-    @field_validator("avatar_url")
+    @field_validator("name")
     @classmethod
-    def _web_url_only(cls, v: str | None) -> str | None:
-        if v is not None and not v.lower().startswith(("https://", "http://")):
-            raise ValueError("Avatar must be an http(s) URL")
-        return v
+    def _name(cls, v: str | None) -> str | None:
+        return single_line(v) if v is not None else v
 
 
 class RoleIn(BaseModel):
@@ -121,12 +127,24 @@ class SeasonOut(ORM):
 
 class TeamIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        return single_line(v)
+
     logo_url: str | None = None
     color: str | None = Field(default=None, max_length=16)
 
 
 class TeamPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        return single_line(v) if v is not None else v
+
     logo_url: str | None = None
     color: str | None = Field(default=None, max_length=16)
     captain_id: int | None = None

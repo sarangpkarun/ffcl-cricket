@@ -39,9 +39,9 @@ class User(Base):
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     phone_verified_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # the admin who vouched for the number; null = a code proved it
-    avatar_url: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[str] = mapped_column(String(16), default="active")  # active|suspended|banned
     show_publicly: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")  # name on the public site
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the person left; the row stays so results do not change
     created_at: Mapped[datetime] = _now()
 
 
@@ -73,6 +73,8 @@ class Session(Base):
     created_at: Mapped[datetime] = _now()
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    family_id: Mapped[str | None] = mapped_column(String(32), index=True)  # one sign-in and every token it was refreshed into
+    replaced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # set when a refresh swapped this token for a newer one
 
 
 class RuleSet(Base):
@@ -254,6 +256,7 @@ class Penalty(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    __table_args__ = (Index("ix_audit_logs_created_at", "created_at"),)  # retention and the audit screen read by date
     id: Mapped[int] = _pk()
     actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     action: Mapped[str] = mapped_column(String(60))

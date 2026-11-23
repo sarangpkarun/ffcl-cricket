@@ -119,7 +119,7 @@ async def test_with_codes_disabled_an_approved_phone_change_takes_effect_at_once
 
 
 def test_production_never_runs_the_console_provider():
-    base = {"environment": "production", "jwt_secret": "k" * 48}
+    base = {"environment": "production", "jwt_secret": "k" * 48, "cors_origins": "https://ffcl.example"}
     assert_production_safe(Settings(**base))  # empty means disabled in production
     assert_production_safe(Settings(**base, otp_provider="disabled"))
     with pytest.raises(RuntimeError, match="OTP_PROVIDER"):

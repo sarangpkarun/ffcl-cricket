@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     jwt_secret: str = "change-me-dev-secret-at-least-32-bytes-long"
     cors_origins: str = "http://localhost:3100,http://localhost:3000"
-    access_ttl_minutes: int = 15
+    access_ttl_minutes: int = 10
     refresh_ttl_days: int = 30
     otp_ttl_minutes: int = 5
     otp_max_attempts: int = 5
@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     vapid_subject: str = "mailto:admin@ffcl.example"  # who a push service can contact about this server
     push_dry_run: bool = False  # log pushes instead of sending them (staging, browser tests)
     push_max_devices_per_user: int = 10
+    audit_retention_days: int = 730  # how long audit entries are kept (0 = for ever)
     trust_proxy: bool = False  # honour X-Forwarded-For (only behind a proxy you control)
 
 
@@ -39,7 +40,15 @@ def assert_production_safe(s: Settings) -> None:
         raise RuntimeError("JWT_SECRET must be set to a strong random value (32+ characters) in production")
     if not s.auth_rate_limits_enabled:
         raise RuntimeError("Auth rate limits must stay enabled in production")
+    origins = [o.strip() for o in s.cors_origins.split(",") if o.strip()]
+    if not origins or any(o == "*" or not o.startswith("https://") for o in origins):
+        raise RuntimeError("CORS_ORIGINS must list the site's https:// addresses in production (no wildcard, no http)")
     if s.otp_provider not in ("", "disabled"):
         raise RuntimeError("OTP_PROVIDER must be 'disabled' in production (the console provider logs one-time codes)")
     if s.push_enabled and not (s.vapid_public_key and s.vapid_private_key):
         raise RuntimeError("PUSH_ENABLED needs VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (generate with python -m app.make_vapid)")
+
+
+def allowed_origins(s: Settings = settings) -> set[str]:
+    """Browser origins allowed to call the API and open its sockets: exactly what CORS_ORIGINS lists."""
+    return {o.strip().rstrip("/") for o in s.cors_origins.split(",") if o.strip()}

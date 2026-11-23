@@ -177,9 +177,9 @@ async def test_purge_keeps_recent_and_unread(make_user, db, engine):
 
 def test_worker_is_wired_correctly():
     names = {j.name for j in WorkerSettings.cron_jobs}
-    assert {"cron:scan_reminders", "cron:scan_deadlines", "cron:purge_notifications", "cron:purge_dead_subscriptions"} <= names
+    assert {"cron:scan_reminders", "cron:scan_deadlines", "cron:purge_notifications", "cron:purge_dead_subscriptions", "cron:purge_stale"} <= names
     assert {f.__name__ for f in WorkerSettings.functions} == {
-        "scan_reminders", "scan_deadlines", "purge_notifications", "send_push", "purge_dead_subscriptions", "remind_stale_disputes"}
+        "scan_reminders", "scan_deadlines", "purge_notifications", "send_push", "purge_dead_subscriptions", "remind_stale_disputes", "purge_stale"}
     assert WorkerSettings.redis_settings.host
 
 

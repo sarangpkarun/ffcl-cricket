@@ -17,7 +17,7 @@ from app.core.security import (
     sha256,
     verify_password_async,
 )
-from app.db.models import OtpCode, Session, User, UserRole
+from app.db.models import AuditLog, OtpCode, Session, User, UserRole
 from app.db.session import get_session
 from app.deps import admin_scope, get_current_user, user_roles
 from app.schemas import (
@@ -32,6 +32,8 @@ from app.schemas import (
     TokenOut,
     UserOut,
 )
+from app.services.approvals import tell
+from app.services.outbox import flush as flush_outbox
 from app.services.ratelimit import allow
 
 router = APIRouter(tags=["auth"])
@@ -54,13 +56,17 @@ async def throttle(scope: str, key: str, limit: int, window_seconds: int) -> Non
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Please wait and try again.")
 
 
-async def _issue(db: AsyncSession, user: User, user_agent: str | None) -> TokenOut:
+REPLAY_GRACE = timedelta(seconds=10)  # two tabs refreshing with the same token at once is not an attack
+
+
+async def _issue(db: AsyncSession, user: User, user_agent: str | None, family_id: str | None = None) -> TokenOut:
     refresh = new_refresh_token()
     sess = Session(
         user_id=user.id,
         refresh_hash=sha256(refresh),
         user_agent=(user_agent or "")[:300] or None,
         expires_at=datetime.now(UTC) + timedelta(days=settings.refresh_ttl_days),
+        family_id=family_id or uuid.uuid4().hex,
     )
     db.add(sess)
     await db.commit()
@@ -114,15 +120,31 @@ async def login(
 
 @router.post("/auth/refresh", response_model=TokenOut)
 async def refresh(body: RefreshIn, db: AsyncSession = Depends(get_session)) -> TokenOut:
-    sess = await db.scalar(select(Session).where(Session.refresh_hash == sha256(body.refresh_token)))
-    if not sess or sess.revoked_at or sess.expires_at < datetime.now(UTC):
+    now = datetime.now(UTC)
+    # the row is locked, so two refreshes with the same token are handled one after the other
+    sess = await db.scalar(select(Session).where(Session.refresh_hash == sha256(body.refresh_token)).with_for_update())
+    if not sess:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token")
+    if sess.replaced_at is not None:
+        # This token was already swapped for a newer one. Soon after, that is a second tab; later, someone is
+        # replaying a stolen token (or the thief got there first): end every sign-in that came from it.
+        if now - sess.replaced_at > REPLAY_GRACE and sess.family_id:
+            await db.execute(update(Session).where(Session.family_id == sess.family_id, Session.revoked_at.is_(None)).values(revoked_at=now))
+            await tell(db, {sess.user_id}, "security", "You were signed out of a device",
+                       "An old sign-in token was used again, so we signed that device out for safety. If this was not you, change your password.",
+                       "/profile", f"replay:{sess.family_id}")
+            db.add(AuditLog(actor_id=sess.user_id, action="session.replay", entity="session", entity_id=sess.id))
+            await db.commit()
+            await flush_outbox(db)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token")
+    if sess.revoked_at or sess.expires_at < now:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token")
     user = await db.get(User, sess.user_id)
     if not user or user.status != "active":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Account not active")
-    # Rotate: revoke old session, issue a new one.
-    sess.revoked_at = datetime.now(UTC)
-    return await _issue(db, user, sess.user_agent)
+    # Rotate: the old token is spent (and remembered as replaced), a new one carries on the same sign-in.
+    sess.revoked_at = sess.replaced_at = now
+    return await _issue(db, user, sess.user_agent, sess.family_id)
 
 
 @router.post("/auth/logout", status_code=204)
@@ -146,6 +168,31 @@ async def logout_all(
         .where(Session.user_id == user.id, Session.revoked_at.is_(None))
         .values(revoked_at=datetime.now(UTC))
     )
+    await db.commit()
+
+
+def _sid(authorization: str | None = Header(default=None)) -> int:
+    """The session the request's access token belongs to (get_current_user has already checked it)."""
+    from app.core.security import decode_access_token
+
+    return int(decode_access_token((authorization or "")[7:])["sid"])
+
+
+@router.get("/me/sessions")
+async def my_sessions(user: User = Depends(get_current_user), sid: int = Depends(_sid), db: AsyncSession = Depends(get_session)) -> list[dict]:
+    """Where this account is signed in: one row per device, newest activity first."""
+    rows = await db.scalars(select(Session).where(Session.user_id == user.id, Session.revoked_at.is_(None), Session.expires_at > datetime.now(UTC))
+                            .order_by(Session.created_at.desc()))
+    return [{"id": s.id, "device": s.user_agent or "Unknown device", "last_active": s.created_at.isoformat(), "current": s.id == sid} for s in rows]
+
+
+@router.delete("/me/sessions/{session_id}", status_code=204)
+async def end_session(session_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> None:
+    sess = await db.get(Session, session_id)
+    if not sess or sess.user_id != user.id:
+        raise HTTPException(404, "Session not found")
+    await db.execute(update(Session).where(Session.user_id == user.id, Session.family_id == sess.family_id, Session.revoked_at.is_(None)).values(revoked_at=datetime.now(UTC))
+                     if sess.family_id else update(Session).where(Session.id == sess.id).values(revoked_at=datetime.now(UTC)))
     await db.commit()
 
 

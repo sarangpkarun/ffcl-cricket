@@ -426,7 +426,7 @@ def test_generated_vapid_keys_work():
 
 
 def test_production_refuses_push_without_keys():
-    base = {"environment": "production", "jwt_secret": "x" * 40, "auth_rate_limits_enabled": True}
+    base = {"environment": "production", "jwt_secret": "x" * 40, "auth_rate_limits_enabled": True, "cors_origins": "https://ffcl.example"}
     assert_production_safe(Settings(**base, push_enabled=False))
     assert_production_safe(Settings(**base, push_enabled=True, vapid_public_key="a", vapid_private_key="b"))
     with pytest.raises(RuntimeError, match="VAPID"):

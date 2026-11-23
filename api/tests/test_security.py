@@ -117,20 +117,12 @@ async def test_free_text_and_digit_fields_are_bounded(make_user):
     assert (await bowlers[0].req("POST", sub, json={"digits": "1️⃣1️⃣2️⃣2️⃣3️⃣4️⃣"})).status_code == 200
 
 
-async def test_avatar_must_be_a_web_url(make_user):
-    p = await make_user("P")
-    for bad in ("javascript:alert(1)", "data:text/html;base64,AAAA", "ftp://x/y.png", "//evil.test/x.png"):
-        assert (await p.req("PATCH", "/me", json={"avatar_url": bad})).status_code == 422, bad
-    ok = await p.req("PATCH", "/me", json={"avatar_url": "https://cdn.example.com/me.png"})
-    assert ok.status_code == 200 and ok.json()["avatar_url"] == "https://cdn.example.com/me.png"
-
-
 # ---------- deployment ----------
 def test_production_refuses_the_development_secret():
     dev = Settings(environment="production")
     with pytest.raises(RuntimeError, match="JWT_SECRET"):
         assert_production_safe(dev)
-    assert_production_safe(Settings(environment="production", jwt_secret="k" * 48, auth_rate_limits_enabled=True))
+    assert_production_safe(Settings(environment="production", jwt_secret="k" * 48, auth_rate_limits_enabled=True, cors_origins="https://ffcl.example"))
     assert_production_safe(Settings(environment="development"))  # the dev default is fine in development
     with pytest.raises(RuntimeError, match="rate limits"):
-        assert_production_safe(Settings(environment="production", jwt_secret="k" * 48, auth_rate_limits_enabled=False))
+        assert_production_safe(Settings(environment="production", jwt_secret="k" * 48, auth_rate_limits_enabled=False, cors_origins="https://ffcl.example"))

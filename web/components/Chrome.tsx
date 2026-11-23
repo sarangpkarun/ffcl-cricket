@@ -31,13 +31,13 @@ function PublicHeader() {
 export function Chrome({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { me } = useAuth();
-  const isPublic = path.startsWith("/league") || (path === "/" && !me);
+  const isPublic = path.startsWith("/league") || ["/privacy", "/terms"].includes(path) || (path === "/" && !me);
   if (isPublic) {
     return (
       <>
         <PublicHeader />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-12 pt-4 outline-none">{children}</main>
-        <footer className="border-t py-4 text-center text-xs text-muted-foreground">FFCL digit cricket league</footer>
+        <footer className="border-t py-4 text-center text-xs text-muted-foreground">FFCL digit cricket league · <Link className="underline" href="/privacy" prefetch={false}>Privacy</Link> · <Link className="underline" href="/terms" prefetch={false}>Terms</Link></footer>
       </>
     );
   }

@@ -61,7 +61,10 @@ async function refresh(): Promise<Tokens | null> {
   })
     .then(async (r) => {
       if (!r.ok) {
-        saveTokens(null);
+        // Another tab may have used this token a moment ago and saved newer ones: carry on with those.
+        const saved = loadTokens();
+        if (saved && saved.refresh_token !== t.refresh_token) return saved;
+        if (r.status === 401 || r.status === 403) saveTokens(null); // really ended; a server hiccup keeps the sign-in
         return null;
       }
       const next = (await r.json()) as Tokens;

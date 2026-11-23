@@ -4,6 +4,7 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.core.origin import refuse_foreign
 from app.db.models import ChatRoom
 from app.realtime import new_pubsub, publish_room, room_channel
 from app.routers.ws import authenticate, log_task_failures, receive_token, session_alive, ws_db
@@ -17,6 +18,8 @@ RECHECK_SECONDS = 25  # re-verify the session and room access this often
 
 @router.websocket("/ws/rooms/{room_id}")
 async def room_socket(ws: WebSocket, room_id: int) -> None:
+    if await refuse_foreign(ws):
+        return
     await ws.accept()
     token = await receive_token(ws)
     async with ws_db(ws) as db:

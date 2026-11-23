@@ -27,6 +27,8 @@ log = logging.getLogger("ffcl.public")
 
 def person_of(u: User) -> dict | None:
     """How a user may be shown to the public, or None if they must not be shown at all."""
+    if u.status == "deleted":  # the person left: results keep a row for them, with no page and no code
+        return {"id": None, "name": "Former player", "code": ""}
     if u.status != "active":
         return None
     if not u.show_publicly:

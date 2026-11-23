@@ -3,10 +3,11 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.text import message
 from app.db.models import Dispute, DisputeMessage, Match, Season, Team, User
 from app.db.session import get_session
 from app.deps import any_admin, get_current_user, is_admin, season_admin
@@ -25,16 +26,31 @@ class RaiseIn(BaseModel):
     season_id: int | None = None
     against_team_id: int | None = None
 
+    @field_validator("body")
+    @classmethod
+    def _body(cls, v: str) -> str:
+        return message(v)
+
 
 class MessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
     internal: bool = False
+
+    @field_validator("body")
+    @classmethod
+    def _body(cls, v: str) -> str:
+        return message(v)
 
 
 class DecideIn(BaseModel):
     outcome: str = Field(min_length=10, max_length=2000)
     action: str = "none"
     adjustment_id: int | None = None
+
+    @field_validator("outcome")
+    @classmethod
+    def _outcome(cls, v: str) -> str:
+        return message(v)
 
 
 class ReopenIn(BaseModel):

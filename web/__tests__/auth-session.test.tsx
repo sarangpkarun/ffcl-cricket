@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
 const KEY = "ffcl.tokens";
-const ME = { id: 1, player_code: "FFP1", name: "Asha", email: "a@t.io", phone: null, phone_verified: true, show_publicly: true, roles: ["player"], admin: { is_global: false, seasons: [] }, avatar_url: null, status: "active" };
+const ME = { id: 1, player_code: "FFP1", name: "Asha", email: "a@t.io", phone: null, phone_verified: true, show_publicly: true, roles: ["player"], admin: { is_global: false, seasons: [] }, status: "active" };
 
 function Probe() {
   const { me, loading, unreachable } = useAuth();

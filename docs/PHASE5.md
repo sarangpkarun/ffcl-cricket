@@ -87,3 +87,9 @@ Verifying a number twice or one that belongs to someone else; an admin verifying
 - A captain who never answers the toss ends in a walkover the umpire records, and the rule is in the rulebook.
 - Every app-level item in the old "accepted for now" table is done or re-justified in writing; a stolen refresh token is detected; players can delete their account or download their data without damaging the league's numbers.
 - Tests, lint, browser tests and load tests are green; documented in `docs/PHASE5.md`, with the deployment checklist ready for you.
+
+
+## Status
+- **Sprint 19 (done):** admin phone verification, OTP production mode, bulk import with invite links, toss-timeout walkover. Migration 0014.
+- **Sprint 20 (done):** security headers and Content-Security-Policy, WebSocket origin check, strict CORS, refresh-token reuse detection with a devices list, delete my account and download my data, "Former player" everywhere, privacy and terms pages, retention job, shared check for hidden characters, rate-limit budget tests, dependency audits in CI, and the review of the old "accepted for now" list (see `docs/SECURITY.md`). Migration 0015.
+- **Deviations from this plan:** the `invites` and `/admin/seasons/{id}/unverified-phones` pieces went into Sprint 19 as planned; the retention job covers audit entries with a configurable age (default two years); a replay inside a 10 second grace window is refused but does not end the sign-in (two tabs racing); team `logo_url` was left alone because nothing displays it and the policy blocks outside images.

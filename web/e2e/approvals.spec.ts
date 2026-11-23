@@ -65,13 +65,16 @@ test("roster change, phone change, rule version, audit log, archive, exports and
   // --- a new rule version, then used by the season
   await ad.goto("/admin/rules");
   await expect(ad.getByLabel("Version", { exact: true })).not.toHaveValue("", { timeout: 10_000 });
-  const penalty = ad.getByLabel("Missed umpire duty penalty");
-  const current = Number(await penalty.getAttribute("placeholder"));
-  await penalty.fill(String(current === 2 ? 3 : 2)); // rule versions persist, so always pick a different value
-  await ad.getByLabel("Why this change").fill("a bigger penalty for no-show umpires");
+  const minimum = ad.getByLabel("Balls faced to qualify (strike rate)");
+  // rule versions persist between runs and an identical one is reused, so pick a value no earlier run used
+  await minimum.fill(String(20 + (Date.now() % 170)));
+  await ad.getByLabel("Why this change").fill("a different qualifying minimum for the strike-rate board");
+  const heading = ad.getByRole("heading", { name: /^New version from v/ });
+  const oldHeading = (await heading.textContent())!;
   await ad.getByRole("button", { name: "Save as a new version" }).click();
   await expect(ad.getByRole("status")).toContainText("New version saved", { timeout: 10_000 });
-  await expect(ad.getByRole("region", { name: "Changes from the previous version" })).toContainText("umpire_duty_penalty", { timeout: 10_000 });
+  await expect(heading).not.toHaveText(oldHeading, { timeout: 10_000 }); // the new version's details have loaded (earlier runs left the same field changed in older versions)
+  await expect(ad.getByRole("region", { name: "Changes from the previous version" })).toContainText("stats.min_balls_strike_rate", { timeout: 10_000 });
   const apply = ad.getByRole("region", { name: "Apply to a season" });
   await apply.getByLabel("Season").selectOption(String(lg.season));
   await apply.getByRole("button", { name: "Apply to this season" }).click();

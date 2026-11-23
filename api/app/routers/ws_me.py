@@ -4,6 +4,7 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.core.origin import refuse_foreign
 from app.realtime import client, new_pubsub, user_channel
 from app.routers.notifications import unread_count
 from app.routers.ws import authenticate, log_task_failures, receive_token, session_alive, ws_db
@@ -16,6 +17,8 @@ RECHECK_SECONDS = 25
 @router.websocket("/ws/me")
 async def me_socket(ws: WebSocket) -> None:
     """Pushes this user's new notifications. The first message must carry the access token."""
+    if await refuse_foreign(ws):
+        return
     await ws.accept()
     token = await receive_token(ws)
     async with ws_db(ws) as db:

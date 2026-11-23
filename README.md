@@ -26,8 +26,11 @@ There is no SMS provider. In production `OTP_PROVIDER` is `disabled` (the defaul
 ## Background worker
 `make up` also starts a `worker` container (`arq app.worker.WorkerSettings`) that sends match reminders, the "toss is due" nudge and the 30-second submission-deadline alert. It is safe to run several.
 
+## Privacy and sessions
+Players can download their data and delete their account from **Profile** (their matches stay as "Former player"), and see and end their sign-ins on other devices. Plain-language `/privacy` and `/terms` pages are linked from the public footer. A nightly worker job clears old codes, sign-ins and invites (`AUDIT_RETENTION_DAYS`, default 730, for audit entries).
+
 ## Security
-See `docs/SECURITY.md`. In production set `ENVIRONMENT=production`, a strong `JWT_SECRET` and keep `AUTH_RATE_LIMITS_ENABLED=true`; the server refuses to start otherwise. The local `.env` turns the limits off because tests and demos register many users from one machine.
+See `docs/SECURITY.md`. Pages are served with a Content-Security-Policy and the usual security headers (`web/next.config.ts`); sockets accept only the origins in `CORS_ORIGINS`, which in production must be exact `https://` addresses. In production set `ENVIRONMENT=production`, a strong `JWT_SECRET` and keep `AUTH_RATE_LIMITS_ENABLED=true`; the server refuses to start otherwise. The local `.env` turns the limits off because tests and demos register many users from one machine.
 
 ## Load test
 With the stack running: `cd api && DATABASE_URL=postgresql+asyncpg://ffcl:ffcl@localhost:55433/ffcl REDIS_URL=redis://localhost:56379/0 uv run python -m loadtest.simulate --matches 10 --watchers 3`

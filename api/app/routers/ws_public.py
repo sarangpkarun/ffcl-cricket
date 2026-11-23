@@ -8,6 +8,7 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.core.config import settings
+from app.core.origin import refuse_foreign
 from app.db.models import Match, Season
 from app.realtime import channel, client, new_pubsub
 from app.routers.ws import PING_SECONDS, log_task_failures, ws_db
@@ -49,6 +50,8 @@ async def _release(ip: str) -> None:
 
 @router.websocket("/ws/public/matches/{match_id}")
 async def public_match_socket(ws: WebSocket, match_id: int) -> None:
+    if await refuse_foreign(ws):
+        return
     await ws.accept()
     async with ws_db(ws) as db:
         m = await db.get(Match, match_id)

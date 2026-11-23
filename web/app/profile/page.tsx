@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { btnCls, btnGhost, ErrorText, Field, RequireAuth } from "@/components/ui-bits";
 import { api, del, patch, post } from "@/lib/api";
+import { Devices } from "@/components/profile/Devices";
+import { YourData } from "@/components/profile/YourData";
 import { useAuth } from "@/lib/auth";
 
 type PhoneChange = { id: number; new_phone: string; status: string; reason: string; decision_note: string | null } | null;
@@ -107,6 +109,8 @@ function Profile() {
       </section>
       {me.phone_verified && <PhoneChange me={me} onChanged={() => void reload()} />}
 
+      <Devices />
+      <YourData />
       <Link href="/disputes" className={`${btnGhost} block text-center`}>My disputes</Link>
       {isAdmin && <Link href="/admin" className={`${btnGhost} block text-center`}>Admin dashboard</Link>}
       <div className="flex gap-3">

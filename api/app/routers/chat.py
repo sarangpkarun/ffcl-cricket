@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.text import message as message_text
 from app.db.models import (
     ChatMessage,
     ChatRead,
@@ -29,7 +30,7 @@ router = APIRouter(tags=["chat"])
 
 
 def _clean_body(v: str) -> str:
-    v = v.strip()
+    v = message_text(v.strip())
     if not v:
         raise ValueError("Message is empty")
     if len(v) > svc.MAX_BODY:
