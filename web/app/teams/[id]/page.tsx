@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { TeamAnalyticsBlock } from "@/components/league/AnalyticsBlocks";
 import { UserSearch } from "@/components/UserSearch";
 import { btnCls, btnGhost, ErrorText, Field, inputCls, RequireAuth } from "@/components/ui-bits";
 import { api, del, patch, post, type TeamDetail } from "@/lib/api";
@@ -100,6 +101,7 @@ function TeamPage() {
       <p className="text-sm text-muted-foreground">{approved}/7 players</p>
       <ErrorText msg={err} />
       <StatsBlock id={id} />
+      <TeamAnalyticsBlock teamId={id} />
 
       <ul className="space-y-2">
         {team.members.map((m) => (

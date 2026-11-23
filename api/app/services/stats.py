@@ -21,10 +21,12 @@ from app.db.models import (
     Penalty,
     RuleSet,
     Season,
+    Toss,
     User,
 )
 from app.engine import Ball, RuleConfig, summarize_innings
 from app.engine import Penalty as EPenalty
+from app.engine.analytics import Inn, MatchRecord
 from app.engine.leaderboards import Perf, Totals, aggregate
 from app.engine.stats import batting_stats, bowling_stats
 from app.services.results import season_config
@@ -38,13 +40,16 @@ class Loaded:
     perfs: list[Perf] = field(default_factory=list)
     innings_runs: dict[tuple[int, int], tuple[int, int]] = field(default_factory=dict)  # (match, n) -> (ball runs, penalty runs)
     awards: dict[int, int] = field(default_factory=dict)  # match_id -> user_id
+    records: dict[int, MatchRecord] = field(default_factory=dict)  # per match, with every counted ball (for analytics)
 
 
 async def load(db: AsyncSession, *, season_id: int | None = None, user_id: int | None = None,
-               team_id: int | None = None, match_id: int | None = None) -> Loaded:
-    """Per-match performances for every counted match in scope (filters combine)."""
-    q = (select(Match).join(MatchResult, MatchResult.match_id == Match.id)
-         .where(MatchResult.result_type.in_(COUNTED)).order_by(Match.id))
+               team_id: int | None = None, match_id: int | None = None, any_result: bool = False) -> Loaded:
+    """Per-match performances for every counted match in scope (filters combine). With `any_result` the
+    results ledger is not required, which lets a match that is still being played be analysed."""
+    q = select(Match).order_by(Match.id)
+    if not any_result:
+        q = q.join(MatchResult, MatchResult.match_id == Match.id).where(MatchResult.result_type.in_(COUNTED))
     if season_id is not None:
         q = q.where(Match.season_id == season_id)
     if match_id is not None:
@@ -76,15 +81,20 @@ async def load(db: AsyncSession, *, season_id: int | None = None, user_id: int |
         lineup.setdefault(mp.match_id, {})[mp.user_id] = mp.team_id
     for a in await db.scalars(select(MatchAward).where(MatchAward.match_id.in_(ids), MatchAward.kind == "potm")):
         out.awards[a.match_id] = a.user_id
+    tosses = {t.match_id: t for t in await db.scalars(select(Toss).where(Toss.match_id.in_(ids)))}
+    ledger = {r.match_id: r for r in await db.scalars(select(MatchResult).where(MatchResult.match_id.in_(ids)))}
 
     for mid, m in out.matches.items():
         cfg = rules.get(m.rule_set_id, RuleConfig())
         when = int(m.scheduled_at.timestamp()) if m.scheduled_at else 0
         per: dict[int, Perf] = {u: Perf(mid, u, t, when) for u, t in lineup.get(mid, {}).items()}
+        recorded: list[Inn] = []
 
         for inn in inns_by_match.get(mid, []):
             s = summarize_innings(balls.get(inn.id, []), pens.get(inn.id, []), cfg, inn.target)
             out.innings_runs[(mid, inn.number)] = (s.ball_runs, s.penalty_runs)
+            recorded.append(Inn(inn.number, inn.batting_team_id, inn.bowling_team_id, s.counted_balls, s.runs, s.wickets,
+                                s.penalty_runs, inn.target))
             for uid, b in batting_stats(s.counted_balls).items():
                 p = per.setdefault(uid, Perf(mid, uid, inn.batting_team_id, when))
                 p.batted, p.runs, p.balls, p.fours, p.sixes, p.outs = True, b.runs, b.balls, b.fours, b.sixes, b.dismissals
@@ -92,6 +102,11 @@ async def load(db: AsyncSession, *, season_id: int | None = None, user_id: int |
                 p = per.setdefault(uid, Perf(mid, uid, inn.bowling_team_id, when))
                 p.bowled, p.bowl_balls, p.bowl_runs, p.wickets = True, w.balls, w.runs, w.wickets
         out.perfs.extend(per.values())
+        res, toss = ledger.get(mid), tosses.get(mid)
+        out.records[mid] = MatchRecord(
+            mid, m.match_no, m.team_a_id, m.team_b_id, res.winner_team_id if res else m.winner_team_id,
+            res.result_type if res else None, toss.winner_team_id if toss else None, toss.decision if toss else None,
+            tuple(recorded), cfg, when)
     return out
 
 
@@ -99,9 +114,9 @@ def filter_team(perfs: list[Perf], team_id: int | None) -> list[Perf]:
     return [p for p in perfs if team_id is None or p.team_id == team_id]
 
 
-async def totals_for(db: AsyncSession, **scope: int | None) -> tuple[dict[int, Totals], Loaded]:
-    team_id = scope.pop("team_id", None)
-    data = await load(db, team_id=team_id, **scope)
+async def totals_for(db: AsyncSession, *, season_id: int | None = None, user_id: int | None = None,
+                     team_id: int | None = None, match_id: int | None = None) -> tuple[dict[int, Totals], Loaded]:
+    data = await load(db, season_id=season_id, user_id=user_id, team_id=team_id, match_id=match_id)
     perfs = filter_team(data.perfs, team_id)
     counts: dict[int, int] = {}
     for mid, uid in data.awards.items():

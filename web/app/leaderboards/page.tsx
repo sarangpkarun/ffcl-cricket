@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ErrorText, inputCls, RequireAuth } from "@/components/ui-bits";
+import Link from "next/link";
 import { Leaderboards, type LeaderBoard } from "@/components/league/Leaderboards";
 import { api, type Season, type Team } from "@/lib/api";
 
@@ -41,6 +42,7 @@ function LeaderboardsPage() {
           {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
       </div>
+      <p className="text-sm"><Link className="underline" href="/insights">Season insights</Link> · <Link className="underline" href="/history">Past seasons</Link></p>
       <ErrorText msg={err} />
       {data && <Leaderboards data={data} playerHref={(id) => `/players/${id}`} teamHref={(id) => `/teams/${id}`} />}
     </div>

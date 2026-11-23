@@ -108,6 +108,14 @@ Accepted for now (Phase 5):
 | D5 | Disputes used to rewrite history of a closed season. | No new disputes and no reopening in an archived season. |
 | D6 | A resolution that points at an unrelated adjustment. | A linked points adjustment must exist and belong to the same season. |
 
+## Addendum: analytics (Sprint 17)
+| # | Finding | Fix or decision |
+|---|---|---|
+| A1 | A player's digit habits would let opponents predict their digits. | Reported only for seasons that are completed or archived, from the server for every viewer (admins and the players themselves included while the season runs); a career view counts only finished seasons; the screens explain why they are hidden. Tested signed in, public, career and per season. |
+| A2 | The public cache could keep digit habits visible after a season is reopened (or hide them after it finishes). | The season's status is part of the cache key for every public analytics response; a regression test warms the cache, finishes and reopens the season and checks the figures change at once, and fails on the old key. |
+| A3 | Head-to-head tables could expose players who chose not to be listed, or suspended players. | Public analytics resolve every other player through the same privacy rules as the rest of the public site: hidden players appear as their player code without an id, suspended players are left out. |
+| A4 | Live analytics could show something the scorecard does not. | They read only resolved balls (the same counted balls as the scorecard); unrevealed digits do not exist as ball events, so there is nothing to leak. |
+
 ## Re-running the checks
 
 ```

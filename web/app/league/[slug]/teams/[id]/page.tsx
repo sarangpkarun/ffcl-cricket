@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { TeamAnalyticsView } from "@/components/league/Analytics";
 import { FixtureList, Section, Skeleton } from "@/components/league/PublicBits";
-import { pub, pubPlain, type PubTeam } from "@/lib/public";
+import { pub, pubPlain, type PubTeam, type TeamAnalytics } from "@/lib/public";
 
 type P = { params: Promise<{ slug: string; id: string }> };
 
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 
 async function Content({ params }: P) {
   const { slug, id } = await params;
-  const t = await pub<PubTeam>(`/teams/${id}`);
+  const [t, an] = await Promise.all([pub<PubTeam>(`/teams/${id}`), pub<TeamAnalytics>(`/teams/${id}/analytics`)]);
   if (!t || t.season.slug !== slug) notFound();
   const row = t.table;
   return (
@@ -54,6 +55,7 @@ async function Content({ params }: P) {
           </div>
         </Section>
       )}
+      {an && an.played > 0 && <Section title="Analytics"><TeamAnalyticsView data={an} /></Section>}
       <Section title="Matches"><FixtureList items={t.fixtures} slug={slug} empty="No matches yet." /></Section>
     </div>
   );

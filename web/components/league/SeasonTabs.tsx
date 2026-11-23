@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const TABS = [
   { seg: "", label: "Overview" }, { seg: "fixtures", label: "Fixtures" }, { seg: "results", label: "Results" },
-  { seg: "table", label: "Table" }, { seg: "stats", label: "Stats" }, { seg: "rules", label: "Rules" },
+  { seg: "table", label: "Table" }, { seg: "stats", label: "Stats" }, { seg: "insights", label: "Insights" }, { seg: "rules", label: "Rules" },
 ];
 
 export function SeasonTabs({ slug, seasons }: { slug: string; seasons: { slug: string; name: string }[] }) {

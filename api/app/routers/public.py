@@ -15,6 +15,7 @@ from app.routers.fixtures import fixture_rows
 from app.routers.seasons_admin import history_rows
 from app.routers.standings import bracket
 from app.routers.stats import player_stats, season_leaderboards, team_stats
+from app.services import analytics as analytics_svc
 from app.services.live_view import build_live
 from app.services.public import (
     cache_headers,
@@ -236,6 +237,45 @@ async def _live(db: AsyncSession, m: Match) -> dict:
     """Keyed by the match's sequence number, so a change is visible at once and a crowd shares one build."""
     out = await cached(f"live:{m.id}:{m.seq}", 5, lambda: build_live(db, m, None))
     return {**out, "you": {"official": False}}
+
+
+# ---------- analytics ----------
+@router.get("/matches/{match_id}/analytics")
+async def match_analytics(match_id: int, response: Response, db: AsyncSession = Depends(get_session)) -> dict:
+    cache_headers(response, LIVE_TTL)
+    m, _ = await public_match(db, match_id)
+    return await cached(f"mana:{m.id}:{m.seq}", 5, lambda: analytics_svc.match_analytics(db, m))
+
+
+@router.get("/seasons/{slug}/analytics")
+async def season_analytics(slug: str, response: Response, db: AsyncSession = Depends(get_session)) -> dict:
+    cache_headers(response, MEDIUM)
+    season = await public_season(db, slug)
+    # the season's status is part of the key: digit habits may only ever be served while it is finished, with no cache delay either way
+    return await cached(f"sana:{season.id}:{season.status}", MEDIUM, lambda: analytics_svc.season_analytics(db, season))
+
+
+@router.get("/teams/{team_id}/analytics")
+async def team_analytics(team_id: int, response: Response, db: AsyncSession = Depends(get_session)) -> dict:
+    cache_headers(response, MEDIUM)
+    t = await db.get(Team, team_id)
+    season = await db.get(Season, t.season_id) if t else None
+    if not t or not season or not season.is_public or season.status == "draft":
+        raise HTTPException(404, "Team not found")
+    return await cached(f"tana:{team_id}", MEDIUM, lambda: analytics_svc.team_analytics(db, t))
+
+
+@router.get("/players/{user_id}/analytics")
+async def player_analytics(user_id: int, response: Response, season: str = Query(min_length=1, max_length=100),
+                           db: AsyncSession = Depends(get_session)) -> dict:
+    cache_headers(response, MEDIUM)
+    s = await public_season(db, season)
+    u = await db.get(User, user_id)
+    p = person_of(u) if u else None
+    if u is None or p is None or p["id"] is None:
+        raise HTTPException(404, "Player not found")
+
+    return await cached(f"pana:{user_id}:{s.id}:{s.status}", MEDIUM, lambda: analytics_svc.player_analytics(db, u, s.id, public=True))
 
 
 # ---------- sitemap ----------

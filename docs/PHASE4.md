@@ -67,7 +67,7 @@ Defaults I chose (tell me if any are wrong):
 - Rules: no new disputes in an archived season; an admin who belongs to a disputed team cannot resolve it; everything audited.
 - **Exit:** a captain disputes a result, an admin investigates with internal notes, reverses the result through the existing tool and resolves the dispute, and both captains are told.
 
-### Sprint 17: Advanced analytics (week 4 to 5)
+### Sprint 17: Advanced analytics (week 4 to 5) ✅ done
 - `services/analytics.py` (pure functions in `engine/analytics.py`): match (worm of runs per ball for both innings, runs per over, wickets timeline, powerplay overs), team (powerplay versus normal-over run rate, batting first versus chasing record, toss decision and win rate, average and highest score), player (form over the last matches, batter versus bowler head-to-head, runs and wickets by over type), season (toss versus result, chase success, average first-innings score), and digit habits for completed seasons only.
 - Lightweight SVG chart components (worm, bars, trend); no chart library. Match analytics tab, team and player analytics sections, a Season insights page. Public versions read the same data (digit habits only for completed seasons).
 - **Exit:** every analytics total reconciles with the scorecard and ledger (a test sums the over-by-over runs to the innings total), and digit habits are absent while a season is active.
@@ -180,3 +180,22 @@ Decisions and limits:
 - A dispute does not change any result by itself; the admin does that with the existing tools and records it. This keeps one place where results change.
 - A recused admin who is the only admin cannot decide a dispute about their own team; another admin must be available (a second admin is recommended before launch).
 - Messages are plain text; there are no attachments.
+
+## Sprint 17 outcome
+Built:
+- **Analytics engine** (`engine/analytics.py`, pure) and read models (`services/analytics.py`). Everything is derived on request from the same counted balls the scorecard uses, so totals always agree with it: over-by-over runs add up to the innings' ball runs, ball runs plus penalty runs are the innings total (the figure in the results ledger), and the powerplay split plus penalties is the team's runs. The loader (`stats.load`) now keeps a record of every counted ball per match, with the toss and the ledger result, and can read a match that is still being played.
+- **Match**: a "worm" (runs after every ball for both sides, with a dot at each wicket), runs in each over with powerplay overs marked, the powerplay split (normal, bowling powerplay, batting powerplay: runs, wickets and runs per over), and the biggest over. Available while the match is live and updates as balls are bowled or corrected; penalty runs appear in the totals but not in the ball-by-ball lines (and the page says so).
+- **Team**: record batting first and chasing, average, highest and lowest score, average conceded, batting and bowling by over type, and the toss (won, lost, bat or bowl chosen, and the match win rate after winning or losing it).
+- **Player** (a season or a career): form over the last 10 matches, batting and bowling by over type, and head-to-head (who they scored most against, who they took most wickets against), all from the player's own balls and so equal to their statistics.
+- **Season insights**: averages for the first and second innings, win rates when batting first and chasing, how often the toss winner wins, scoring and wickets per over type across the league, and the teams compared.
+- **Digit habits** (which digits a player tends to choose, as batter and as bowler, and the whole league's distribution) are reported **only for seasons that are completed or archived**, never for one being played, because they would help opponents guess digits. A player's career view counts only their finished seasons. The shared public cache includes the season's status in its key, so the figures appear the moment a season finishes and disappear the moment it is reopened (a test proves this, and fails without the fix).
+- **Screens**: collapsible "Match analytics" on every match page (signed in and public, refreshed as the match changes), "Team analytics" and player "Analytics" sections, a **Season insights** page (`/insights`) and a public **Insights** tab (`/league/<season>/insights`, server-rendered and in the sitemap). The charts are small hand-written SVG components (no chart library): each has a text description for screen readers and a hidden data table.
+- **Public side** mirrors all of it (`/public/matches/{id}/analytics`, seasons, teams, players) with the same privacy rules: players who chose not to be listed appear only by player code, suspended players are left out of head-to-head tables, and nothing is shown for hidden seasons or drafts.
+- No migration: everything is derived.
+
+Tests: 9 engine tests (a hand-worked innings, digit counts, and property checks over more than a hundred random seasons: every over, worm, by-type split, team, season and player total reconciles with the innings, ledger and each player's own figures) and 12 API tests (the match report equals the live scorecard, in-progress matches, penalties and corrections, visibility, walkovers and abandonments, the season and team figures equal the points table's runs for and against, the player report equals their statistics, digit habits never during a season and only from finished seasons in a career view, public equals signed-in, public privacy, hidden seasons, and the cache rule) plus a browser test (match charts, team and player sections, insights signed in and public, the digit-habit note until the season ends and the distributions afterwards, everywhere).
+
+Decisions and limits:
+- Over types come from the rule version the match was played under, so a later rule change does not rewrite old analytics.
+- Head-to-head lists show the five players faced most; fuller lists would need a dedicated page.
+- Analytics are computed on request (a season is a few thousand balls); the public side caches each response for 5 to 30 seconds.

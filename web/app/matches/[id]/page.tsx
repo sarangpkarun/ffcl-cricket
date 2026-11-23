@@ -6,6 +6,7 @@ import { ChatRoom } from "@/components/chat/ChatRoom";
 import { PlayerPanel } from "@/components/match/PlayerPanel";
 import { Scoreboard } from "@/components/match/Scoreboard";
 import { TossPanel } from "@/components/match/TossPanel";
+import { AnalyticsPanel } from "@/components/match/AnalyticsPanel";
 import { DisputePanel } from "@/components/match/DisputePanel";
 import { PotmPanel } from "@/components/match/PotmPanel";
 import { UmpireConsole } from "@/components/match/UmpireConsole";
@@ -104,6 +105,7 @@ function MatchPage() {
         {connected ? "● Live" : "○ Reconnecting…"}
       </p>
       <Scoreboard live={live} />
+      {live.innings.some((i) => i.status !== "pending") && <AnalyticsPanel matchId={match.id} seq={live.match.seq} />}
       <ErrorText msg={err ?? error} />
       {live.over && live.over.your_role && live.over.state !== "resolved" && (
         <PlayerPanel matchId={match.id} over={live.over} battingTeam={battingName} onDone={done} />

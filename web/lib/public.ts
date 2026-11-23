@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import type { Bracket, FixtureTeam, Live, Standings, TableRow } from "@/lib/api";
 import type { History, Totals } from "@/components/league/PlayerStats";
+import type { PlayerAnalytics, SeasonAnalytics, TeamAnalytics } from "@/lib/analytics";
 import type { LeaderBoard } from "@/components/league/Leaderboards";
 
 /** Server-side reads of the public API. Pages stream this data at request time, so it is always fresh. */
@@ -55,3 +56,5 @@ export async function pubPlain<T>(path: string): Promise<T | null> {
     return null;
   }
 }
+
+export type { PlayerAnalytics, SeasonAnalytics, TeamAnalytics };

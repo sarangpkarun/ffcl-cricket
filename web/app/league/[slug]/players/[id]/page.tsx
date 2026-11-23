@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/league/PublicBits";
+import { PlayerAnalyticsView } from "@/components/league/Analytics";
 import { BattingBowling, MatchHistory } from "@/components/league/PlayerStats";
-import { pub, pubPlain, type PubPlayer } from "@/lib/public";
+import { pub, pubPlain, type PlayerAnalytics, type PubPlayer } from "@/lib/public";
 
 type P = { params: Promise<{ slug: string; id: string }> };
 
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 
 async function Content({ params }: P) {
   const { slug, id } = await params;
-  const p = await pub<PubPlayer>(`/players/${id}?season=${encodeURIComponent(slug)}`);
+  const [p, an] = await Promise.all([pub<PubPlayer>(`/players/${id}?season=${encodeURIComponent(slug)}`), pub<PlayerAnalytics>(`/players/${id}/analytics?season=${encodeURIComponent(slug)}`)]);
   if (!p) notFound();
   return (
     <div className="space-y-5">
@@ -27,6 +28,7 @@ async function Content({ params }: P) {
         <p className="text-sm text-muted-foreground">{p.player.player_code} · {p.season.name}</p>
       </header>
       <BattingBowling t={p.totals} />
+      {an && <section aria-label="Analytics" className="space-y-2"><h3 className="font-medium">Analytics</h3><PlayerAnalyticsView data={an} playerHref={(pid) => `/league/${slug}/players/${pid}`} /></section>}
       <MatchHistory history={p.history} matchHref={(mid) => `/league/${slug}/matches/${mid}`} />
       {p.other_seasons.length > 0 && (
         <section aria-label="Other seasons" className="space-y-1 text-sm">

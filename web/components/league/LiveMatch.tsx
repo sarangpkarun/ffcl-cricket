@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AnalyticsPanel } from "@/components/match/AnalyticsPanel";
 import { Scoreboard, overLabel } from "@/components/match/Scoreboard";
 import type { Live } from "@/lib/api";
 import { usePublicLive } from "@/lib/usePublicLive";
@@ -33,6 +34,7 @@ export function LiveMatch({ matchId, initial, slug }: { matchId: number; initial
     <div className="space-y-4">
       {!finished && <p className={`text-xs ${connected ? "text-green-700" : "text-amber-700"}`} aria-live="polite">{connected ? "● Live" : "○ Updating every few seconds"}</p>}
       <Scoreboard live={live} />
+      {live.innings.some((i) => i.status !== "pending") && <AnalyticsPanel matchId={matchId} seq={live.match.seq} publicSite />}
       {live.over && live.over.state !== "resolved" && !finished && <Over over={live.over} />}
       {potm && <p className="text-sm">⭐ Player of the match: {potm.id !== null ? <Link className="underline" href={`/league/${slug}/players/${potm.id}`}>{potm.name}</Link> : potm.name}</p>}
     </div>

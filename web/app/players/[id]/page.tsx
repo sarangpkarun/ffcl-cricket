@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ErrorText, inputCls, RequireAuth } from "@/components/ui-bits";
+import { PlayerAnalyticsBlock } from "@/components/league/AnalyticsBlocks";
 import { BattingBowling, MatchHistory, type History, type Totals } from "@/components/league/PlayerStats";
 import { api, type Season } from "@/lib/api";
 
@@ -34,6 +35,7 @@ function Player() {
       <ErrorText msg={err} />
 
       <BattingBowling t={t} />
+      <PlayerAnalyticsBlock playerId={id} seasonId={scope} />
 
       {d.seasons.length > 1 && (
         <section aria-label="By season" className="space-y-1">
