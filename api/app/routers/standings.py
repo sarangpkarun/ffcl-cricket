@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, Match, Season, Stage, Team, User
 from app.db.session import get_session
-from app.deps import get_current_user, require_admin
+from app.deps import get_current_user, require_admin, season_admin
 from app.engine.fixtures import Pairing, PlannedMatch, umpire_plan
 from app.engine.knockout import SUPPORTED_QUALIFIERS, round_labels, seed_pairs
 from app.realtime import publish_change
@@ -79,7 +79,7 @@ class KnockoutIn(BaseModel):
 
 
 @router.post("/seasons/{season_id}/knockouts/generate", status_code=201)
-async def generate_knockouts(season_id: int, body: KnockoutIn, admin: User = Depends(require_admin),
+async def generate_knockouts(season_id: int, body: KnockoutIn, admin: User = Depends(season_admin("season")),
                              db: AsyncSession = Depends(get_session)) -> dict:
     """Seed the top teams from the table into the semi-finals (or straight into the final)."""
     season = await _season(db, season_id)

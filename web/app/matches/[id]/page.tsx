@@ -50,7 +50,7 @@ function TeamLineup({ match, team, canEdit, onSaved }: { match: MatchDetail; tea
 
 function MatchPage() {
   const { id } = useParams<{ id: string }>();
-  const { me, isAdmin } = useAuth();
+  const { me, canAdmin } = useAuth();
   const { live, error, refresh, connected } = useLive(id);
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [teams, setTeams] = useState<TeamDetail[]>([]);
@@ -72,6 +72,7 @@ function MatchPage() {
   }, [id]);
   if (!match || !me || !live) return <ErrorText msg={err ?? error} />;
 
+  const isAdmin = canAdmin(match.season_id);
   const done = () => { void refresh(); void load(); };
   const official = live.you.official;
   const myTeamIds = teams.filter((t) => t.captain_id === me.id).map((t) => t.id);

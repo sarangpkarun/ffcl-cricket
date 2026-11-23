@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { btnGhost, ErrorText, inputCls, RequireAuth } from "@/components/ui-bits";
+import { adminSeasons, chooseSeason, rememberSeason } from "@/lib/seasons";
+import { useAuth } from "@/lib/auth";
 import { api, post, type Season } from "@/lib/api";
 
 type Duty = {
@@ -11,6 +13,7 @@ type Duty = {
 };
 
 function Duties() {
+  const { adminScope } = useAuth();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [sid, setSid] = useState("");
   const [rows, setRows] = useState<Duty[]>([]);
@@ -18,14 +21,19 @@ function Duties() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Season[]>("/seasons").then((s) => { setSeasons(s); setSid(String((s.find((x) => x.status === "active") ?? s[0])?.id ?? "")); }).catch((e) => setErr(e.message));
-  }, []);
-  const load = useCallback(async () => {
+    api<Season[]>("/seasons").then((all) => { const s = adminSeasons(all, adminScope); setSeasons(s); setSid(String(chooseSeason(s)?.id ?? "")); }).catch((e) => setErr(e.message));
+  }, [adminScope]);
+  const load = useCallback(async (current: () => boolean = () => true) => {
     if (!sid) return;
-    try { setRows(await api<Duty[]>(`/seasons/${sid}/duties`)); } catch (e) { setErr((e as Error).message); }
+    try { const r = await api<Duty[]>(`/seasons/${sid}/duties`); if (current()) setRows(r); } catch (e) { setErr((e as Error).message); }
   }, [sid]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch when the season changes
-  useEffect(() => { void load(); }, [load]);
+   
+  useEffect(() => {
+    let live = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount and when the season or a filter changes
+    void load(() => live);
+    return () => { live = false; };
+  }, [load]);
 
   const act = async (d: Duty, what: "missed" | "reverse") => {
     setErr(null);
@@ -35,7 +43,7 @@ function Duties() {
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-semibold">Umpire duties</h1>
-      <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => setSid(e.target.value)}>
+      <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => { rememberSeason(e.target.value); setSid(e.target.value); }}>
         {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
       <ErrorText msg={err} />

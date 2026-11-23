@@ -19,8 +19,9 @@ from app.core.security import (
 )
 from app.db.models import OtpCode, Session, User, UserRole
 from app.db.session import get_session
-from app.deps import get_current_user, user_roles
+from app.deps import admin_scope, get_current_user, user_roles
 from app.schemas import (
+    AdminOut,
     LoginIn,
     MeOut,
     OtpRequestIn,
@@ -197,7 +198,8 @@ async def otp_verify(
 @router.get("/me", response_model=MeOut)
 async def me(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> MeOut:
     base = UserOut.model_validate(user).model_dump()
-    return MeOut(**base, roles=sorted(await user_roles(db, user.id)))
+    scope = await admin_scope(db, user.id)
+    return MeOut(**base, roles=sorted(await user_roles(db, user.id)), admin=AdminOut(is_global=scope.is_global, seasons=sorted(scope.seasons)))
 
 
 @router.patch("/me", response_model=MeOut)

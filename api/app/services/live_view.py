@@ -44,7 +44,7 @@ async def over_view(db: AsyncSession, over: Over, viewer: User | None, official:
 async def build_live(db: AsyncSession, m: Match, viewer: User | None) -> dict:
     public = viewer is None
     rules = await load_rules(db, m)
-    official = viewer is not None and (m.umpire_id == viewer.id or await is_admin(db, viewer))
+    official = viewer is not None and (m.umpire_id == viewer.id or await is_admin(db, viewer, m.season_id))
     teams = {t.id: t for t in await db.scalars(select(Team).where(Team.id.in_([m.team_a_id, m.team_b_id])))}
 
     toss = await db.scalar(select(Toss).where(Toss.match_id == m.id))

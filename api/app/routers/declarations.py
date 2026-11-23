@@ -57,9 +57,9 @@ async def abandon(match_id: int, body: AbandonIn, user: User = Depends(get_curre
 async def reverse(match_id: int, body: ReverseIn, user: User = Depends(get_current_user),
                   db: AsyncSession = Depends(get_session)) -> dict:
     """Undo a walkover or abandonment (admins only). The match returns to what it was before."""
-    if not await is_admin(db, user):
-        raise HTTPException(403, "Only an admin can reverse a walkover or abandonment")
     m = await lock_match(db, match_id)
+    if not await is_admin(db, user, m.season_id):
+        raise HTTPException(403, "Only an admin can reverse a walkover or abandonment")
     await svc.reverse_declaration(db, m, body.reason.strip(), user)
     await commit_match(db, m)
     return {"status": m.status, "paused": m.paused}

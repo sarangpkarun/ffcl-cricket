@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { btnGhost, ErrorText, inputCls, RequireAuth } from "@/components/ui-bits";
-import { api, del, post, put } from "@/lib/api";
+import { api, del, post, put, type Season } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 type RoleRow = { role: string; season_id: number | null };
@@ -17,11 +17,12 @@ const ADMIN_ROLES = ["super_admin", "tournament_admin"];
 const GRANTABLE = ["player", "umpire", "tournament_admin", "super_admin"]; // captains are chosen on the team page
 const label = (r: string) => r.replace("_", " ");
 
-function Card({ u, canAdmin, isSuper, myId, onChange }: {
-  u: AdminUser; canAdmin: boolean; isSuper: boolean; myId: number; onChange: () => void;
+function Card({ u, canAdmin, isSuper, myId, seasons, onChange }: {
+  u: AdminUser; canAdmin: boolean; isSuper: boolean; myId: number; seasons: Season[]; onChange: () => void;
 }) {
   const [err, setErr] = useState<string | null>(null);
   const [role, setRole] = useState("umpire");
+  const [season, setSeason] = useState(""); // for a season admin: which season
   const run = async (fn: () => Promise<unknown>) => {
     setErr(null);
     try { await fn(); onChange(); } catch (e) { setErr((e as Error).message); }
@@ -42,7 +43,7 @@ function Card({ u, canAdmin, isSuper, myId, onChange }: {
       <ul className="flex flex-wrap gap-1" aria-label="Roles">
         {u.roles.map((r) => (
           <li key={`${r.role}-${r.season_id}`} className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
-            {label(r.role)}{r.season_id !== null && ` (season ${r.season_id})`}
+            {label(r.role)}{r.season_id !== null && ` (${seasons.find((x) => x.id === r.season_id)?.name ?? `season ${r.season_id}`})`}
             {canAdmin && mayRevoke(r.role) && (
               <button type="button" aria-label={`Remove ${label(r.role)} from ${u.name}`}
                 onClick={() => run(() => del(`/admin/users/${u.id}/roles/${r.role}${r.season_id !== null ? `?season_id=${r.season_id}` : ""}`))}>×</button>
@@ -56,7 +57,13 @@ function Card({ u, canAdmin, isSuper, myId, onChange }: {
           <select aria-label={`Role to add for ${u.name}`} className="rounded border bg-background px-2 py-2 text-sm" value={role} onChange={(e) => setRole(e.target.value)}>
             {options.map((r) => <option key={r} value={r}>{label(r)}</option>)}
           </select>
-          <button className={btnGhost} onClick={() => run(() => post(`/users/${u.id}/roles`, { role }))}>Add role</button>
+          {role === "tournament_admin" && (
+            <select aria-label={`Season for ${u.name}'s admin role`} className="rounded border bg-background px-2 py-2 text-sm" value={season} onChange={(e) => setSeason(e.target.value)}>
+              <option value="">All seasons</option>
+              {seasons.map((x) => <option key={x.id} value={x.id}>Only {x.name}</option>)}
+            </select>
+          )}
+          <button className={btnGhost} onClick={() => run(() => post(`/users/${u.id}/roles`, { role, season_id: role === "tournament_admin" && season ? Number(season) : null }))}>Add role</button>
           {isSuper && u.id !== myId && (u.status === "active" ? (
             <>
               <button className={btnGhost} onClick={() => run(() => put(`/users/${u.id}/status`, { status: "suspended" }))}>Suspend</button>
@@ -74,6 +81,8 @@ function Card({ u, canAdmin, isSuper, myId, onChange }: {
 
 function People() {
   const { me, isAdmin } = useAuth();
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  useEffect(() => { api<Season[]>("/seasons").then(setSeasons).catch(() => {}); }, []);
   const [q, setQ] = useState("");
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
@@ -116,7 +125,7 @@ function People() {
       <ErrorText msg={err} />
       <p className="text-xs text-muted-foreground" aria-live="polite">{total} {total === 1 ? "person" : "people"}</p>
       <div className="space-y-3">
-        {data?.users.map((u) => <Card key={u.id} u={u} canAdmin={isAdmin} isSuper={isSuper} myId={me.id} onChange={() => void load()} />)}
+        {data?.users.map((u) => <Card key={u.id} u={u} canAdmin={isAdmin} isSuper={isSuper} seasons={seasons} myId={me.id} onChange={() => void load()} />)}
       </div>
       {total > PAGE && (
         <div className="flex items-center justify-between">
@@ -130,5 +139,5 @@ function People() {
 }
 
 export default function Page() {
-  return <RequireAuth admin><People /></RequireAuth>;
+  return <RequireAuth admin global><People /></RequireAuth>;
 }

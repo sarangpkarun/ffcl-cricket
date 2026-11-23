@@ -121,6 +121,7 @@ export type Me = {
   phone_verified: boolean;
   show_publicly: boolean;
   roles: string[];
+  admin: { is_global: boolean; seasons: number[] };
   status: string;
 };
 export type Season = { id: number; name: string; status: string; slug?: string; is_public?: boolean };

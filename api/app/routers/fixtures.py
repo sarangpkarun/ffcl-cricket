@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, Match, RuleSet, Season, Stage, Team, User
 from app.db.session import get_session
-from app.deps import get_current_user, is_admin, require_admin
+from app.deps import get_current_user, is_admin, season_admin
 from app.engine.fixtures import PlannedMatch, round_robin, schedule, slot_times, umpire_plan
 from app.engine.rules import DEFAULT_RULES
 from app.realtime import publish_change
@@ -123,7 +123,7 @@ async def _plan(db: AsyncSession, season: Season, p: FixtureParams) -> dict:
 
 
 @router.post("/seasons/{season_id}/fixtures/preview")
-async def preview(season_id: int, body: FixtureParams, _: User = Depends(require_admin),
+async def preview(season_id: int, body: FixtureParams, _: User = Depends(season_admin("season")),
                   db: AsyncSession = Depends(get_session)) -> dict:
     """Show what would be generated. Nothing is saved."""
     plan = await _plan(db, await _season(db, season_id), body)
@@ -132,7 +132,7 @@ async def preview(season_id: int, body: FixtureParams, _: User = Depends(require
 
 
 @router.post("/seasons/{season_id}/fixtures/generate", status_code=201)
-async def generate(season_id: int, body: GenerateParams, admin: User = Depends(require_admin),
+async def generate(season_id: int, body: GenerateParams, admin: User = Depends(season_admin("season")),
                    db: AsyncSession = Depends(get_session)) -> dict:
     """Create the league stage and its matches as unpublished drafts."""
     season = await _season(db, season_id)
@@ -186,7 +186,7 @@ class PublishIn(BaseModel):
 
 
 @router.post("/seasons/{season_id}/fixtures/publish")
-async def publish(season_id: int, body: PublishIn, admin: User = Depends(require_admin),
+async def publish(season_id: int, body: PublishIn, admin: User = Depends(season_admin("season")),
                   db: AsyncSession = Depends(get_session)) -> dict:
     """Make drafts visible and tell everybody involved. Safe to repeat: published matches are skipped."""
     await _season(db, season_id)
@@ -274,7 +274,7 @@ async def list_fixtures(
 ) -> list[dict]:
     """The fixture list with team names, ready to show. Drafts appear only for admins who ask."""
     await _season(db, season_id)
-    return await fixture_rows(db, season_id, status, team_id, drafts=include_drafts and await is_admin(db, user))
+    return await fixture_rows(db, season_id, status, team_id, drafts=include_drafts and await is_admin(db, user, season_id))
 
 
 @router.get("/seasons/{season_id}/stages")
@@ -291,7 +291,7 @@ async def list_stages(season_id: int, _: User = Depends(get_current_user),
 
 
 @router.delete("/matches/{match_id}", status_code=204)
-async def delete_match(match_id: int, admin: User = Depends(require_admin),
+async def delete_match(match_id: int, admin: User = Depends(season_admin("match")),
                        db: AsyncSession = Depends(get_session)) -> None:
     match = await db.get(Match, match_id)
     if not match:

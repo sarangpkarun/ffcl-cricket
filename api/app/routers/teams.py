@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Season, Team, TeamMember, User, UserRole
 from app.db.session import get_session
-from app.deps import get_current_user, is_admin, require_admin
+from app.deps import get_current_user, is_admin, season_admin
 from app.schemas import MemberIn, MemberOut, TeamDetail, TeamIn, TeamOut, TeamPatch
 from app.services.archive import ensure_open
 
@@ -21,7 +21,7 @@ async def _team(db: AsyncSession, team_id: int) -> Team:
 
 
 async def can_manage(db: AsyncSession, user: User, team: Team) -> bool:
-    return team.captain_id == user.id or await is_admin(db, user)
+    return team.captain_id == user.id or await is_admin(db, user, team.season_id)
 
 
 async def _approved_count(db: AsyncSession, team_id: int) -> int:
@@ -52,7 +52,7 @@ async def _detail(db: AsyncSession, team: Team) -> TeamDetail:
 async def create_team(
     season_id: int,
     body: TeamIn,
-    _: User = Depends(require_admin),
+    _: User = Depends(season_admin("season")),
     db: AsyncSession = Depends(get_session),
 ) -> Team:
     if not await db.get(Season, season_id):
@@ -92,7 +92,7 @@ async def update_team(
     team = await _team(db, team_id)
     await ensure_open(db, team.season_id)
     data = body.model_dump(exclude_unset=True)
-    admin = await is_admin(db, user)
+    admin = await is_admin(db, user, team.season_id)
     if not (admin or team.captain_id == user.id):
         raise HTTPException(403, "Not allowed")
     if "captain_id" in data and not admin:

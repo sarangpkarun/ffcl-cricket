@@ -19,7 +19,7 @@ async function Content({ params }: P) {
   return (
     <div className="space-y-4">
       <h2 className="sr-only">Leaderboards</h2>
-      <Leaderboards data={data} playerHref={(id) => `/league/${slug}/players/${id}`} teamHref={(id) => `/league/${slug}/teams/${id}`} />
+      <Leaderboards data={data} playerHref={(id) => `/league/${slug}/players/${id}`} teamHref={(id) => `/league/${slug}/teams/${id}`} prefetch={false} />
     </div>
   );
 }

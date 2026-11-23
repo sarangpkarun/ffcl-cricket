@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, Match, RuleSet, Season, User
 from app.db.session import get_session
-from app.deps import require_admin
+from app.deps import require_admin, season_admin
 from app.engine.rules_admin import deep_merge, diff, effective, validate
 from app.services.archive import ensure_open
 
@@ -83,7 +83,7 @@ async def new_version(body: NewVersionIn, admin: User = Depends(require_admin), 
 
 
 @router.post("/seasons/{season_id}/rules")
-async def apply_rules(season_id: int, body: ApplyIn, admin: User = Depends(require_admin),
+async def apply_rules(season_id: int, body: ApplyIn, admin: User = Depends(season_admin("season")),
                       db: AsyncSession = Depends(get_session)) -> dict:
     """Use a rule version for the table and for matches that have not started. Matches under way or
     finished keep the version they started under."""

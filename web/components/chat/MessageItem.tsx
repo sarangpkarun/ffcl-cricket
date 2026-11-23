@@ -55,7 +55,7 @@ export function MessageItem({ m, myId, canEdit, moderator, reactionSet, open, on
   if (m.kind === "system") {
     return (
       <li className="my-1 flex justify-center">
-        <p className="max-w-[90%] rounded-full bg-muted px-3 py-1 text-center text-xs text-muted-foreground">{m.deleted ? "Message removed" : m.body}</p>
+        <p className="max-w-[90%] rounded-full bg-muted px-3 py-1 text-center text-xs text-foreground/80">{m.deleted ? "Message removed" : m.body}</p>
       </li>
     );
   }

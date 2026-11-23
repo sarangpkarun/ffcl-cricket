@@ -88,14 +88,14 @@ async def level(db: AsyncSession, user: User, d: Dispute) -> str | None:
     teams = await team_ids_of(db, d)
     if user.id == d.raised_by or user.id in await leaders_of(db, teams):
         return "party"
-    if await is_admin(db, user):
+    if await is_admin(db, user, d.season_id):
         return None if user.id in await members_of(db, teams) else "admin"
     return None
 
 
 async def judges(db: AsyncSession, d: Dispute) -> set[int]:
     """Admins who are allowed to decide this dispute."""
-    return (await admin_ids(db)) - await members_of(db, await team_ids_of(db, d)) - {d.raised_by}
+    return (await admin_ids(db, d.season_id)) - await members_of(db, await team_ids_of(db, d)) - {d.raised_by}
 
 
 # ---------- raising ----------

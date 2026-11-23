@@ -25,7 +25,7 @@ export function SeasonTabs({ slug, seasons }: { slug: string; seasons: { slug: s
         {TABS.map((t) => {
           const active = tab === t.seg;
           return (
-            <Link key={t.seg} href={`/league/${slug}${t.seg ? `/${t.seg}` : ""}`} aria-current={active ? "page" : undefined}
+            <Link prefetch={false} key={t.seg} href={`/league/${slug}${t.seg ? `/${t.seg}` : ""}`} aria-current={active ? "page" : undefined}
               className={`whitespace-nowrap px-3 py-2 text-sm ${active ? "border-b-2 border-foreground font-semibold" : "text-muted-foreground"}`}>
               {t.label}
             </Link>

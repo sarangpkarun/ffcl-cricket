@@ -43,7 +43,7 @@ export function BattingBowling({ t }: { t: Totals }) {
   );
 }
 
-export function MatchHistory({ history, matchHref }: { history: History[]; matchHref: (id: number) => string }) {
+export function MatchHistory({ history, matchHref, prefetch = true }: { history: History[]; matchHref: (id: number) => string; prefetch?: boolean }) {
   return (
     <section aria-label="Match history" className="space-y-1">
       <h2 className="font-medium">Match history</h2>
@@ -51,7 +51,7 @@ export function MatchHistory({ history, matchHref }: { history: History[]; match
       <ul className="space-y-2">
         {history.map((h) => (
           <li key={h.match_id}>
-            <Link href={matchHref(h.match_id)} className="block rounded-lg border p-3 text-sm">
+            <Link href={matchHref(h.match_id)} prefetch={prefetch} className="block rounded-lg border p-3 text-sm">
               <span className="font-medium">{h.round_label ?? `Match ${h.match_no}`}</span> vs {h.against}
               {h.won !== null && <span className={h.won ? " text-green-700" : " text-red-700"}> · {h.won ? "Won" : "Lost"}</span>}
               {h.potm && " ⭐"}

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/league/PublicBits";
 import { pub, type SeasonListItem } from "@/lib/public";
 
-export const metadata: Metadata = { title: "Seasons", description: "Every FFCL season: fixtures, results, table and stats." };
+export const metadata: Metadata = { title: "Seasons", description: "Every FFCL season: fixtures, results, table and stats.", alternates: { canonical: "/league" } };
 
 async function Seasons() {
   const seasons = (await pub<SeasonListItem[]>("/seasons")) ?? [];
@@ -13,7 +13,7 @@ async function Seasons() {
     <ul className="space-y-2">
       {seasons.map((s) => (
         <li key={s.id}>
-          <Link href={`/league/${s.slug}`} className="block rounded-lg border p-4">
+          <Link prefetch={false} href={`/league/${s.slug}`} className="block rounded-lg border p-4">
             <p className="font-medium">{s.name}</p>
             <p className="text-sm text-muted-foreground">{s.teams} teams · {s.matches} matches · {s.status}{s.champion ? ` · 🏆 ${s.champion}` : ""}</p>
           </Link>

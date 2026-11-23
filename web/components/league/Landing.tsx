@@ -12,15 +12,15 @@ export async function Landing() {
         <h1 className="text-2xl font-bold">FFCL digit cricket league</h1>
         <p className="text-sm text-muted-foreground">Follow every match live, check the table and see who is leading the stats. Players and umpires sign in to play.</p>
         <p className="flex flex-wrap gap-3 text-sm">
-          <Link className="underline" href="/league">All seasons</Link>
-          <Link className="underline" href="/league/history">History</Link>
-          {current && <Link className="underline" href={`/league/${current.slug}/rules`}>How it is played</Link>}
-          <Link className="underline" href="/register">Join the league</Link>
+          <Link prefetch={false} className="underline" href="/league">All seasons</Link>
+          <Link prefetch={false} className="underline" href="/league/history">History</Link>
+          {current && <Link prefetch={false} className="underline" href={`/league/${current.slug}/rules`}>How it is played</Link>}
+          <Link prefetch={false} className="underline" href="/register">Join the league</Link>
         </p>
       </section>
       {current ? (
         <>
-          <h2 className="text-lg font-semibold"><Link href={`/league/${current.slug}`}>{current.name}</Link></h2>
+          <h2 className="text-lg font-semibold"><Link prefetch={false} href={`/league/${current.slug}`}>{current.name}</Link></h2>
           <SeasonOverview slug={current.slug} />
         </>
       ) : <p className="text-sm text-muted-foreground">No season is public yet. Check back soon.</p>}

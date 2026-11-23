@@ -116,6 +116,20 @@ Accepted for now (Phase 5):
 | A3 | Head-to-head tables could expose players who chose not to be listed, or suspended players. | Public analytics resolve every other player through the same privacy rules as the rest of the public site: hidden players appear as their player code without an id, suspended players are left out. |
 | A4 | Live analytics could show something the scorecard does not. | They read only resolved balls (the same counted balls as the scorecard); unrevealed digits do not exist as ball events, so there is nothing to leak. |
 
+## Addendum: season admins and launch checks (Sprint 18)
+| # | Finding | Fix or decision |
+|---|---|---|
+| S1 | A season admin could gain power over another season through a route that forgets to check the season. | `is_admin` fails closed (no season means global admins only); every season-keyed route goes through one dependency that finds the season from the id in the path; a test sends a request to every such route with another season's ids and expects 403, and another test fails if any `/admin` route has no guard at all. |
+| S2 | Probing ids: a 404 for a missing thing and a 403 for another season's thing would let a season admin map other seasons. | A missing id is judged as "no season", so a season admin always gets 403; only global admins reach the 404. Unreadable chat rooms and disputes already looked the same as missing ones. |
+| S3 | Granting admin power. | Only a super admin grants or revokes admin roles (a season admin cannot grant anything); a super admin cannot be limited to a season; the season must exist; every grant is audited. |
+| S4 | Chat boundary for season admins. | A season admin reads and moderates only the rooms of their own seasons (season rooms by season, match rooms through the match), and is only listed as a member there. |
+| S5 | Notifications reaching the wrong admins. | Roster and dispute notifications go to global admins and the admins of that season only. |
+| S6 | A dropped connection ended a session (the saved sign-in was wiped on any failed request), which also made "am I signed in" hard to reason about. | Only a real 401 or 403 ends it; network and server errors keep it and retry. |
+| S7 | Public load amplification: every public page prefetched the pages it links to, each costing server and API work. | Prefetching is off on the public site (transfer halved) and the public load test shows 200 viewers and 40 readers served with p95 230 ms. |
+| S8 | Share previews for bots that ignore streamed metadata. | Metadata is in the head for every visitor (tested with a link-preview user agent). |
+
+Left for Phase 5 (launch): real SMS and email providers, backups and a restore drill, monitoring and alerting, staging and a pilot with real teams, and a second admin so a recused admin never leaves a dispute with nobody to decide it.
+
 ## Re-running the checks
 
 ```
@@ -125,6 +139,7 @@ cd api && uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/req.
   && uvx pip-audit -r /tmp/req.txt --no-deps --disable-pip      # Python dependencies
 cd api && uv run python -m loadtest.chat_load --matches 30      # concurrency, fan-out and pool limits
 cd api && uv run python -m loadtest.season --teams 6            # a whole season: play, rebuild, reconcile, archive
+cd api && uv run python -m loadtest.public_load --viewers 200 --push 500   # anonymous viewers, public pages and push fan-out
 ```
 
 ## Deployment checklist (before real users)

@@ -47,7 +47,7 @@ async def lock_match(db: AsyncSession, match_id: int) -> Match:
 
 
 async def ensure_official(db: AsyncSession, user: User, m: Match) -> None:
-    if m.umpire_id != user.id and not await is_admin(db, user):
+    if m.umpire_id != user.id and not await is_admin(db, user, m.season_id):
         raise HTTPException(403, "Only the match umpire or an admin can do this")
 
 

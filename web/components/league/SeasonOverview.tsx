@@ -18,13 +18,13 @@ export async function SeasonOverview({ slug }: { slug: string }) {
           <ol className="divide-y rounded-lg border text-sm">
             {top.map((r) => (
               <li key={r.team.id} className="flex items-center justify-between p-3">
-                <span>{r.position}. <Link className="font-medium underline" href={`/league/${slug}/teams/${r.team.id}`}>{r.team.name}</Link></span>
+                <span>{r.position}. <Link prefetch={false} className="font-medium underline" href={`/league/${slug}/teams/${r.team.id}`}>{r.team.name}</Link></span>
                 <span className="text-muted-foreground">P{r.played} · <b className="text-foreground">{r.points}</b> pts</span>
               </li>
             ))}
           </ol>
         )}
-        <Link className="text-sm underline" href={`/league/${slug}/table`}>Full table and knockouts</Link>
+        <Link prefetch={false} className="text-sm underline" href={`/league/${slug}/table`}>Full table and knockouts</Link>
       </Section>
       {(ov.leaders.most_runs.length > 0 || ov.leaders.most_wickets.length > 0) && (
         <Section title="Leaders" label="Leaders">
@@ -35,7 +35,7 @@ export async function SeasonOverview({ slug }: { slug: string }) {
                 <ol className="space-y-1">
                   {rows.map((r) => (
                     <li key={`${r.player?.id ?? r.player?.name}`} className="flex justify-between">
-                      <span>{r.player && r.player.id !== null ? <Link className="underline" href={`/league/${slug}/players/${r.player.id}`}>{r.player.name}</Link> : r.player?.name}</span>
+                      <span>{r.player && r.player.id !== null ? <Link prefetch={false} className="underline" href={`/league/${slug}/players/${r.player.id}`}>{r.player.name}</Link> : r.player?.name}</span>
                       <b>{r.value}</b>
                     </li>
                   ))}
@@ -43,7 +43,7 @@ export async function SeasonOverview({ slug }: { slug: string }) {
               </div>
             ))}
           </div>
-          <Link className="text-sm underline" href={`/league/${slug}/stats`}>All leaderboards</Link>
+          <Link prefetch={false} className="text-sm underline" href={`/league/${slug}/stats`}>All leaderboards</Link>
         </Section>
       )}
     </div>

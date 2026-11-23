@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, Match, PointAdjustment, Season, Team, User
 from app.db.session import get_session
-from app.deps import require_admin
+from app.deps import season_admin
 from app.services.archive import ensure_open
 from app.services.notify import notify
 from app.services.outbox import flush as flush_outbox
@@ -44,7 +44,7 @@ def _out(a: PointAdjustment, team: str | None, who: str | None) -> dict:
 
 
 @router.get("/seasons/{season_id}/adjustments")
-async def list_adjustments(season_id: int, include_voided: bool = False, _: User = Depends(require_admin),
+async def list_adjustments(season_id: int, include_voided: bool = False, _: User = Depends(season_admin("season")),
                            db: AsyncSession = Depends(get_session)) -> list[dict]:
     if not await db.get(Season, season_id):
         raise HTTPException(404, "Season not found")
@@ -58,7 +58,7 @@ async def list_adjustments(season_id: int, include_voided: bool = False, _: User
 
 
 @router.post("/seasons/{season_id}/adjustments", status_code=201)
-async def add_adjustment(season_id: int, body: AdjustmentIn, admin: User = Depends(require_admin),
+async def add_adjustment(season_id: int, body: AdjustmentIn, admin: User = Depends(season_admin("season")),
                          db: AsyncSession = Depends(get_session)) -> dict:
     if not await db.get(Season, season_id):
         raise HTTPException(404, "Season not found")
@@ -86,7 +86,7 @@ async def add_adjustment(season_id: int, body: AdjustmentIn, admin: User = Depen
 
 
 @router.post("/adjustments/{adjustment_id}/void")
-async def void_adjustment(adjustment_id: int, body: VoidIn, admin: User = Depends(require_admin),
+async def void_adjustment(adjustment_id: int, body: VoidIn, admin: User = Depends(season_admin("adjustment")),
                           db: AsyncSession = Depends(get_session)) -> dict:
     adj = await db.get(PointAdjustment, adjustment_id)
     if adj is None:

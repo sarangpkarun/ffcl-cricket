@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Match, Team, UmpireDuty, User
 from app.db.session import get_session
-from app.deps import get_current_user, is_admin, require_admin
+from app.deps import get_current_user, is_admin, season_admin
 from app.services import duties as svc
 from app.services.archive import ensure_match_open
 from app.services.outbox import flush as flush_outbox
@@ -42,7 +42,7 @@ async def _rows(db: AsyncSession, duties: list[UmpireDuty]) -> list[dict]:
 
 @router.get("/seasons/{season_id}/duties")
 async def season_duties(season_id: int, status: str | None = Query(default=None, pattern="^(assigned|performed|missed|replaced)$"),
-                        _: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> list[dict]:
+                        _: User = Depends(season_admin("season")), db: AsyncSession = Depends(get_session)) -> list[dict]:
     q = select(UmpireDuty).join(Match, Match.id == UmpireDuty.match_id).where(Match.season_id == season_id)
     if status:
         q = q.where(UmpireDuty.status == status)
@@ -64,7 +64,7 @@ async def duty_missed(duty_id: int, body: ReasonIn, user: User = Depends(get_cur
     assert match is not None
     await ensure_match_open(db, match)
     stepped_in = match.umpire_id == user.id and user.id != duty.umpire_id
-    if not (await is_admin(db, user) or stepped_in):
+    if not (await is_admin(db, user, match.season_id) or stepped_in):
         raise HTTPException(403, "Only an admin, or the umpire who took over, can record a missed duty")
     adj = await svc.mark_missed(db, duty, user, body.reason.strip())
     await db.commit()
@@ -73,7 +73,7 @@ async def duty_missed(duty_id: int, body: ReasonIn, user: User = Depends(get_cur
 
 
 @router.post("/duties/{duty_id}/reverse")
-async def duty_reverse(duty_id: int, body: ReasonIn, admin: User = Depends(require_admin),
+async def duty_reverse(duty_id: int, body: ReasonIn, admin: User = Depends(season_admin("duty")),
                        db: AsyncSession = Depends(get_session)) -> dict:
     duty = await svc.get_duty(db, duty_id)
     await ensure_match_open(db, await db.get(Match, duty.match_id))  # type: ignore[arg-type]

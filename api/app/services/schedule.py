@@ -91,7 +91,7 @@ async def find_conflicts(db: AsyncSession, *, season_id: int, team_ids: list[int
 
 async def ensure_visible(db: AsyncSession, user: User, match: Match) -> None:
     """Draft fixtures exist only for admins; everyone else gets "not found"."""
-    if match.published_at is None and not await is_admin(db, user):
+    if match.published_at is None and not await is_admin(db, user, match.season_id):
         raise HTTPException(404, "Match not found")
 
 

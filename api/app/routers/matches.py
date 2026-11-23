@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, Match, MatchPlayer, RuleSet, Season, Team, TeamMember, User
 from app.db.session import get_session
-from app.deps import get_current_user, is_admin, require_admin, user_roles
+from app.deps import get_current_user, is_admin, season_admin, user_roles
 from app.engine.rules import DEFAULT_RULES
 from app.realtime import publish_change
 from app.routers.teams import can_manage
@@ -50,7 +50,7 @@ async def _check_umpire(db: AsyncSession, umpire_id: int | None, a: int, b: int)
 async def create_match(
     season_id: int,
     body: MatchIn,
-    admin: User = Depends(require_admin),
+    admin: User = Depends(season_admin("season")),
     db: AsyncSession = Depends(get_session),
 ) -> Match:
     season = await db.get(Season, season_id)
@@ -100,7 +100,7 @@ async def list_matches(
     season_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)
 ) -> list[Match]:
     q = select(Match).where(Match.season_id == season_id).order_by(Match.match_no)
-    if not await is_admin(db, user):
+    if not await is_admin(db, user, season_id):
         q = q.where(Match.published_at.is_not(None))  # drafts are admin-only
     return list(await db.scalars(q))
 
@@ -123,7 +123,7 @@ async def get_match(
 async def update_match(
     match_id: int,
     body: MatchPatch,
-    admin: User = Depends(require_admin),
+    admin: User = Depends(season_admin("match")),
     db: AsyncSession = Depends(get_session),
 ) -> Match:
     m = await _match(db, match_id)

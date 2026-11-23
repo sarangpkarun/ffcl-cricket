@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ErrorText, inputCls, RequireAuth } from "@/components/ui-bits";
 import Link from "next/link";
 import { Leaderboards, type LeaderBoard } from "@/components/league/Leaderboards";
+import { chooseSeason, rememberSeason } from "@/lib/seasons";
 import { api, type Season, type Team } from "@/lib/api";
 
 
@@ -16,25 +17,29 @@ function LeaderboardsPage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Season[]>("/seasons").then((s) => { setSeasons(s); setSid(String((s.find((x) => x.status === "active") ?? s[0])?.id ?? "")); }).catch((e) => setErr(e.message));
+    api<Season[]>("/seasons").then((s) => { setSeasons(s); setSid(String(chooseSeason(s)?.id ?? "")); }).catch((e) => setErr(e.message));
   }, []);
   useEffect(() => {
     if (!sid) return;
     /* eslint-disable react-hooks/set-state-in-effect -- reset and fetch when the season changes */
+    let live = true;
     setTeam("");
-    api<Team[]>(`/seasons/${sid}/teams`).then(setTeams).catch((e) => setErr(e.message));
+    api<Team[]>(`/seasons/${sid}/teams`).then((t) => live && setTeams(t)).catch((e) => setErr(e.message));
     /* eslint-enable react-hooks/set-state-in-effect */
+    return () => { live = false; };
   }, [sid]);
   useEffect(() => {
     if (!sid) return;
-    api<LeaderBoard>(`/seasons/${sid}/leaderboards${team ? `?team_id=${team}` : ""}`).then((d) => { setData(d); setErr(null); }).catch((e) => setErr(e.message));
+    let live = true;
+    api<LeaderBoard>(`/seasons/${sid}/leaderboards${team ? `?team_id=${team}` : ""}`).then((d) => { if (live) { setData(d); setErr(null); } }).catch((e) => live && setErr(e.message));
+    return () => { live = false; };
   }, [sid, team]);
 
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-semibold">Leaderboards</h1>
       <div className="flex gap-2">
-        <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => setSid(e.target.value)}>
+        <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => { rememberSeason(e.target.value); setSid(e.target.value); }}>
           {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select aria-label="Team" className={inputCls} value={team} onChange={(e) => setTeam(e.target.value)}>

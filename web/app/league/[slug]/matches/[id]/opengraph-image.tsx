@@ -16,9 +16,9 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   return new ImageResponse(
     (
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", width: "100%", height: "100%", background: "#111", color: "#fff", padding: 80 }}>
-        <div style={{ fontSize: 34, color: "#bbb" }}>{m?.season.name ?? "FFCL"}{m?.round_label ? ` · ${m.round_label}` : ""}</div>
-        <div style={{ fontSize: 84, fontWeight: 800, marginTop: 24 }}>{a}{b ? ` vs ${b}` : ""}</div>
-        {inn.length > 0 && <div style={{ fontSize: 44, marginTop: 24 }}>{score(1)}{inn.length > 1 ? `  ·  ${score(2)}` : ""}</div>}
+        <div style={{ fontSize: 34, color: "#bbb" }}>{`${m?.season.name ?? "FFCL"}${m?.round_label ? ` · ${m.round_label}` : ""}`}</div>
+        <div style={{ fontSize: 84, fontWeight: 800, marginTop: 24 }}>{b ? `${a} vs ${b}` : a}</div>
+        {inn.length > 0 && <div style={{ fontSize: 44, marginTop: 24 }}>{inn.length > 1 ? `${score(1)}  ·  ${score(2)}` : score(1)}</div>}
         {match?.result && <div style={{ fontSize: 40, marginTop: 24, color: "#9f9" }}>{match.result}</div>}
       </div>
     ),

@@ -4,39 +4,43 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { btnCls, ErrorText, Field, RequireAuth } from "@/components/ui-bits";
 import { api, post, type Season } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { adminSeasons } from "@/lib/seasons";
 
 function Admin() {
+  const { isGlobalAdmin, adminScope } = useAuth();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [disputes, setDisputes] = useState<{ open: number; in_review: number } | null>(null);
   useEffect(() => { api<{ open: number; in_review: number }>("/admin/disputes/summary").then(setDisputes).catch(() => {}); }, []);
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => api<Season[]>("/seasons").then(setSeasons).catch((e) => setErr(e.message)), []);
+  const load = useCallback(() => api<Season[]>("/seasons").then((all) => setSeasons(adminSeasons(all, adminScope))).catch((e) => setErr(e.message)), [adminScope]);
   useEffect(() => { void load(); }, [load]);
 
   return (
     <div className="space-y-5">
-      <Link href="/admin/users" className="block rounded-lg border p-3 text-center text-sm">👥 People (roles, suspend)</Link>
-      <Link href="/admin/moderation" className="block rounded-lg border p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>
+      {isGlobalAdmin && <Link href="/admin/users" className="block rounded-lg border p-3 text-center text-sm">👥 People (roles, suspend)</Link>}
+      {isGlobalAdmin && <Link href="/admin/moderation" className="block rounded-lg border p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>}
       <Link href="/admin/disputes" className="block rounded-lg border p-3 text-center text-sm">⚖️ Disputes{disputes && disputes.open + disputes.in_review > 0 && <span className="ml-2 rounded-full bg-red-600 px-2 text-xs text-white" aria-label={`${disputes.open + disputes.in_review} waiting`}>{disputes.open + disputes.in_review}</span>}</Link>
       <Link href="/admin/approvals" className="block rounded-lg border p-3 text-center text-sm">✅ Approvals (roster changes, phone numbers)</Link>
-      <Link href="/admin/rules" className="block rounded-lg border p-3 text-center text-sm">📏 Rule versions</Link>
-      <Link href="/admin/audit" className="block rounded-lg border p-3 text-center text-sm">🧾 Audit log</Link>
+      {isGlobalAdmin && <Link href="/admin/rules" className="block rounded-lg border p-3 text-center text-sm">📏 Rule versions</Link>}
+      {isGlobalAdmin && <Link href="/admin/audit" className="block rounded-lg border p-3 text-center text-sm">🧾 Audit log</Link>}
       <Link href="/history" className="block rounded-lg border p-3 text-center text-sm">🏆 Season history</Link>
       <Link href="/admin/adjustments" className="block rounded-lg border p-3 text-center text-sm">⚖️ Points adjustments</Link>
       <Link href="/admin/duties" className="block rounded-lg border p-3 text-center text-sm">🧑‍⚖️ Umpire duties</Link>
       <h1 className="text-xl font-semibold">Seasons</h1>
+      {seasons.length === 0 && <p className="text-sm text-muted-foreground">No seasons to manage yet.</p>}
       <ul className="space-y-2">
         {seasons.map((s) => (
           <li key={s.id}>
-            <Link href={`/seasons/${s.id}`} className="flex justify-between rounded-lg border p-3">
+            <Link href={`/admin/seasons/${s.id}`} className="flex justify-between rounded-lg border p-3">
               <span>{s.name}</span>
               <span className="text-sm text-muted-foreground">{s.status}</span>
             </Link>
           </li>
         ))}
       </ul>
-      <form className="space-y-3" onSubmit={async (e) => {
+      {isGlobalAdmin && <form className="space-y-3" onSubmit={async (e) => {
         e.preventDefault();
         setErr(null);
         try { await post("/seasons", { name, status: "active" }); setName(""); await load(); }
@@ -45,7 +49,7 @@ function Admin() {
         <Field label="New season name (e.g. FFCL S-24)" required value={name} onChange={(e) => setName(e.target.value)} />
         <ErrorText msg={err} />
         <button className={btnCls}>Create season</button>
-      </form>
+      </form>}
     </div>
   );
 }

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Match, Season, Team, User
 from app.db.session import get_session
-from app.deps import require_admin
+from app.deps import season_admin
 from app.services import stats as stats_svc
 from app.services.results import season_table
 
@@ -49,7 +49,7 @@ async def _season(db: AsyncSession, season_id: int) -> Season:
 
 
 @router.get("/seasons/{season_id}/export/fixtures.csv")
-async def fixtures_csv(season_id: int, _: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> Response:
+async def fixtures_csv(season_id: int, _: User = Depends(season_admin("season")), db: AsyncSession = Depends(get_session)) -> Response:
     season = await _season(db, season_id)
     matches = list(await db.scalars(select(Match).where(Match.season_id == season_id).order_by(Match.match_no)))
     teams = {t.id: t.name for t in await db.scalars(select(Team).where(Team.season_id == season_id))}
@@ -63,7 +63,7 @@ async def fixtures_csv(season_id: int, _: User = Depends(require_admin), db: Asy
 
 
 @router.get("/seasons/{season_id}/export/table.csv")
-async def table_csv(season_id: int, _: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> Response:
+async def table_csv(season_id: int, _: User = Depends(season_admin("season")), db: AsyncSession = Depends(get_session)) -> Response:
     season = await _season(db, season_id)
     t = await season_table(db, season)
     rows = [[r["position"], r["team"]["name"], r["played"], r["won"], r["lost"], r["tied"], r["no_result"], r["points"],
@@ -74,7 +74,7 @@ async def table_csv(season_id: int, _: User = Depends(require_admin), db: AsyncS
 
 
 @router.get("/seasons/{season_id}/export/players.csv")
-async def players_csv(season_id: int, _: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> Response:
+async def players_csv(season_id: int, _: User = Depends(season_admin("season")), db: AsyncSession = Depends(get_session)) -> Response:
     season = await _season(db, season_id)
     totals, _data = await stats_svc.totals_for(db, season_id=season_id)
     users = await stats_svc.user_names(db, set(totals))

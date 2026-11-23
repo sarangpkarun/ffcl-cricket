@@ -2,23 +2,19 @@
 
 from collections.abc import Iterable
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User, UserRole
-from app.deps import ADMIN_ROLES
+from app.deps import admin_user_ids
 from app.services.notify import notify
 
 
-async def admin_ids(db: AsyncSession) -> set[int]:
-    ids = set(await db.scalars(select(UserRole.user_id).where(UserRole.role.in_(ADMIN_ROLES))))
-    if not ids:
-        return set()
-    return set(await db.scalars(select(User.id).where(User.id.in_(ids), User.status == "active")))
+async def admin_ids(db: AsyncSession, season_id: int | None = None) -> set[int]:
+    """Admins who may decide something: global admins, plus the admins of that season when it is about one."""
+    return await admin_user_ids(db, season_id)
 
 
-async def ask_admins(db: AsyncSession, title: str, body: str, key: str) -> None:
-    await notify(db, await admin_ids(db), "approval", title, body, {"link": "/admin/approvals"}, key)
+async def ask_admins(db: AsyncSession, title: str, body: str, key: str, season_id: int | None = None) -> None:
+    await notify(db, await admin_ids(db, season_id), "approval", title, body, {"link": "/admin/approvals"}, key)
 
 
 async def tell(db: AsyncSession, users: Iterable[int], kind: str, title: str, body: str, link: str, key: str) -> None:

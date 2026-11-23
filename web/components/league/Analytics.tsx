@@ -98,9 +98,9 @@ export function TeamAnalyticsView({ data }: { data: TeamAnalytics }) {
   );
 }
 
-export function PlayerAnalyticsView({ data, playerHref }: { data: PlayerAnalytics; playerHref: (id: number) => string }) {
+export function PlayerAnalyticsView({ data, playerHref, prefetch = true }: { data: PlayerAnalytics; playerHref: (id: number) => string; prefetch?: boolean }) {
   const form = data.form;
-  const name = (r: { user_id: number | null; name: string | null }) => (r.user_id !== null ? <Link className="underline" href={playerHref(r.user_id)}>{r.name}</Link> : r.name);
+  const name = (r: { user_id: number | null; name: string | null }) => (r.user_id !== null ? <Link className="underline" prefetch={prefetch} href={playerHref(r.user_id)}>{r.name}</Link> : r.name);
   return (
     <div className="space-y-4">
       {form.length === 0 ? <p className="text-sm text-muted-foreground">Analytics appear after the first finished match.</p> : (
@@ -142,7 +142,7 @@ export function PlayerAnalyticsView({ data, playerHref }: { data: PlayerAnalytic
   );
 }
 
-export function SeasonInsightsView({ data, teamHref }: { data: SeasonAnalytics; teamHref: (id: number) => string }) {
+export function SeasonInsightsView({ data, teamHref, prefetch = true }: { data: SeasonAnalytics; teamHref: (id: number) => string; prefetch?: boolean }) {
   const s = data.summary;
   if (s.matches === 0) return <p className="text-sm text-muted-foreground">Insights appear after the first finished match.</p>;
   return (
@@ -173,7 +173,7 @@ export function SeasonInsightsView({ data, teamHref }: { data: SeasonAnalytics; 
             <tbody>
               {data.teams.map((t) => (
                 <tr key={t.team.id} className="border-t">
-                  <td className="px-3 py-2"><Link className="underline" href={teamHref(t.team.id)}>{t.team.name}</Link></td>
+                  <td className="px-3 py-2"><Link className="underline" prefetch={prefetch} href={teamHref(t.team.id)}>{t.team.name}</Link></td>
                   <td className="px-2 text-right tabular-nums">{val(t.average_for)}</td><td className="px-2 text-right tabular-nums">{val(t.average_against)}</td>
                   <td className="px-2 text-right">{t.batting_first.won}/{t.batting_first.played}</td><td className="px-3 text-right">{t.chasing.won}/{t.chasing.played}</td>
                 </tr>

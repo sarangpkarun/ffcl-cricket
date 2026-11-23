@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AuditLog, Session, User, UserRole
+from app.db.models import AuditLog, Season, Session, User, UserRole
 from app.db.session import get_session
 from app.deps import get_current_user, require_admin, require_role, user_roles
 from app.schemas import RoleIn, StatusIn, UserLite
@@ -41,6 +41,11 @@ async def grant_role(
         raise HTTPException(403, "Only a super admin can grant admin roles")
     if not await db.get(User, user_id):
         raise HTTPException(404, "User not found")
+    if body.season_id is not None:
+        if body.role == "super_admin":
+            raise HTTPException(422, "A super admin works across every season")
+        if not await db.get(Season, body.season_id):
+            raise HTTPException(404, "Season not found")
     existing = await db.scalar(
         select(UserRole).where(
             UserRole.user_id == user_id,

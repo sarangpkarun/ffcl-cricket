@@ -57,8 +57,16 @@ class UserLite(ORM):
     player_code: str
 
 
+class AdminOut(BaseModel):
+    """Where this person is an admin: everywhere, or only in these seasons."""
+
+    is_global: bool
+    seasons: list[int]
+
+
 class MeOut(UserOut):
     roles: list[str]
+    admin: AdminOut
 
 
 class ProfileIn(BaseModel):

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AuditLog, Match, MatchPlayer, RosterChange, Season, Team, TeamMember, User
 from app.db.session import get_session
-from app.deps import get_current_user, is_admin, require_admin
+from app.deps import admin_scope, get_current_user, is_admin, season_admin
 from app.routers.teams import can_manage
 from app.services.approvals import ask_admins, tell
 from app.services.archive import ensure_open
@@ -98,7 +98,7 @@ async def request_change(team_id: int, body: RosterIn, user: User = Depends(get_
     await db.flush()
     db.add(AuditLog(actor_id=user.id, action="roster.request", entity="roster_change", entity_id=rc.id, reason=rc.reason,
                     after={"team": team_id, "out": rc.out_user_id, "in": rc.in_user_id}))
-    await ask_admins(db, "Roster change to approve", f"{team.name} asks to swap a player.", f"rc:{rc.id}")
+    await ask_admins(db, "Roster change to approve", f"{team.name} asks to swap a player.", f"rc:{rc.id}", season_id=team.season_id)
     await db.commit()
     await flush_outbox(db)
     return (await _out(db, [rc]))[0]
@@ -115,9 +115,13 @@ async def list_changes(status: str | None = Query(default=None, pattern="^(pendi
         q = q.where(RosterChange.team_id == team_id)
     if season_id:
         q = q.where(RosterChange.team_id.in_(select(Team.id).where(Team.season_id == season_id)))
-    if not await is_admin(db, user):  # captains see their own teams' requests; players see ones about them
-        q = q.where(or_(RosterChange.team_id.in_(select(Team.id).where(Team.captain_id == user.id)),
-                        RosterChange.out_user_id == user.id, RosterChange.in_user_id == user.id))
+    scope = await admin_scope(db, user.id)
+    if not scope.is_global:  # a season admin sees their seasons; captains see their own teams' requests; players see ones about them
+        mine = [RosterChange.team_id.in_(select(Team.id).where(Team.captain_id == user.id)),
+                RosterChange.out_user_id == user.id, RosterChange.in_user_id == user.id]
+        if scope.seasons:
+            mine.append(RosterChange.team_id.in_(select(Team.id).where(Team.season_id.in_(scope.seasons))))
+        q = q.where(or_(*mine))
     return await _out(db, list(await db.scalars(q)))
 
 
@@ -135,7 +139,7 @@ async def _finish(db: AsyncSession, rc: RosterChange, status: str, by: User, not
 
 
 @router.post("/roster-changes/{rc_id}/approve")
-async def approve(rc_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> dict:
+async def approve(rc_id: int, admin: User = Depends(season_admin("roster")), db: AsyncSession = Depends(get_session)) -> dict:
     rc = await _locked(db, rc_id)
     team = await db.get(Team, rc.team_id)
     assert team is not None
@@ -166,7 +170,7 @@ async def approve(rc_id: int, admin: User = Depends(require_admin), db: AsyncSes
 
 
 @router.post("/roster-changes/{rc_id}/reject")
-async def reject(rc_id: int, body: DecisionIn, admin: User = Depends(require_admin),
+async def reject(rc_id: int, body: DecisionIn, admin: User = Depends(season_admin("roster")),
                  db: AsyncSession = Depends(get_session)) -> dict:
     rc = await _locked(db, rc_id)
     await _finish(db, rc, "rejected", admin, body.note.strip())
@@ -182,7 +186,8 @@ async def reject(rc_id: int, body: DecisionIn, admin: User = Depends(require_adm
 @router.post("/roster-changes/{rc_id}/cancel")
 async def cancel(rc_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> dict:
     rc = await _locked(db, rc_id)
-    if rc.requested_by != user.id and not await is_admin(db, user):
+    team = await db.get(Team, rc.team_id)
+    if rc.requested_by != user.id and not await is_admin(db, user, team.season_id if team else None):
         raise HTTPException(403, "Only the person who asked, or an admin, can cancel this")
     await _finish(db, rc, "cancelled", user, None)
     db.add(AuditLog(actor_id=user.id, action="roster.cancel", entity="roster_change", entity_id=rc.id))
@@ -191,7 +196,7 @@ async def cancel(rc_id: int, user: User = Depends(get_current_user), db: AsyncSe
 
 
 @router.get("/seasons/{season_id}/roster-changes/summary")
-async def summary(season_id: int, _: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> dict:
+async def summary(season_id: int, _: User = Depends(season_admin("season")), db: AsyncSession = Depends(get_session)) -> dict:
     if not await db.get(Season, season_id):
         raise HTTPException(404, "Season not found")
     n = len(list(await db.scalars(select(RosterChange.id).where(

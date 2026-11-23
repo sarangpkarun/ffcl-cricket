@@ -88,7 +88,7 @@ function SeasonAdmin({ id }: { id: string }) {
             <input type="checkbox" checked={!!season.is_public} onChange={(e) => act(() => patch(`/seasons/${id}`, { is_public: e.target.checked }))} />
             Show this season on the public site
           </label>
-          <p className="text-xs text-muted-foreground">Public address: <Link className="underline" href={`/league/${season.slug}`}>/league/{season.slug}</Link>{!season.is_public && " (hidden)"}</p>
+          <p className="text-xs text-foreground/80">Public address: <Link className="underline" href={`/league/${season.slug}`}>/league/{season.slug}</Link>{!season.is_public && " (hidden)"}</p>
         </div>
       )}
       <div className="flex flex-wrap gap-2">

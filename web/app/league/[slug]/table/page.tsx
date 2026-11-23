@@ -22,11 +22,11 @@ async function Content({ params }: P) {
     <div className="space-y-4">
       <h2 className="sr-only">Points table</h2>
       {champion && <p role="status" className="rounded-lg bg-foreground px-4 py-3 text-center font-medium text-background">🏆 {champion.name} are champions</p>}
-      <StandingsTable data={data} teamHref={(id) => `/league/${slug}/teams/${id}`} />
+      <StandingsTable data={data} teamHref={(id) => `/league/${slug}/teams/${id}`} prefetch={false} />
       {bracket?.stage && (
         <section className="space-y-2" aria-label="Knockouts">
           <h2 className="font-medium">Knockouts</h2>
-          <ul className="space-y-2">{bracket.matches.map((m) => <li key={m.id}><Tie m={m} href={`/league/${slug}/matches/${m.id}`} /></li>)}</ul>
+          <ul className="space-y-2">{bracket.matches.map((m) => <li key={m.id}><Tie m={m} href={`/league/${slug}/matches/${m.id}`} prefetch={false} /></li>)}</ul>
         </section>
       )}
     </div>

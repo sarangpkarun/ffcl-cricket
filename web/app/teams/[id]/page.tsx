@@ -77,13 +77,14 @@ function Replacements({ id, team, onDone }: { id: string; team: TeamDetail; onDo
 
 function TeamPage() {
   const { id } = useParams<{ id: string }>();
-  const { me, isAdmin } = useAuth();
+  const { me, canAdmin } = useAuth();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(() => api<TeamDetail>(`/teams/${id}`).then(setTeam).catch((e) => setErr(e.message)), [id]);
   useEffect(() => { void load(); }, [load]);
   if (!team || !me) return <ErrorText msg={err} />;
 
+  const isAdmin = canAdmin(team.season_id);
   const manager = isAdmin || team.captain_id === me.id;
   const mine = team.members.find((m) => m.user_id === me.id);
   const run = async (fn: () => Promise<unknown>) => {

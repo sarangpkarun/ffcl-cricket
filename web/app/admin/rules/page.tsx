@@ -110,5 +110,5 @@ function Rules() {
 }
 
 export default function Page() {
-  return <RequireAuth admin><Rules /></RequireAuth>;
+  return <RequireAuth admin global><Rules /></RequireAuth>;
 }

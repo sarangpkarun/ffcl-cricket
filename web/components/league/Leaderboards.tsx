@@ -6,7 +6,7 @@ export type LeaderBoard = { categories: { key: string; title: string; rows: Lead
 const fmt = (key: string, v: number) => (key === "best_strike_rate" || key === "best_economy" ? v.toFixed(2) : key === "best_win_pct" ? `${v}%` : String(v));
 
 /** The leaderboard cards. Shared by the signed-in app and the public site. */
-export function Leaderboards({ data, playerHref, teamHref }: { data: LeaderBoard; playerHref: (id: number) => string; teamHref: (id: number) => string }) {
+export function Leaderboards({ data, playerHref, teamHref, prefetch = true }: { data: LeaderBoard; playerHref: (id: number) => string; teamHref: (id: number) => string; prefetch?: boolean }) {
   return (
     <>
       {data.categories.every((c) => c.rows.length === 0) && <p className="text-sm text-muted-foreground">No statistics yet. They appear once matches are played.</p>}
@@ -22,8 +22,8 @@ export function Leaderboards({ data, playerHref, teamHref }: { data: LeaderBoard
                   <span className="w-5 text-muted-foreground">{r.rank}</span>
                   <span className="min-w-0 flex-1">
                     {r.player
-                      ? (r.player.id !== null ? <Link href={playerHref(r.player.id)} className="font-medium underline">{r.player.name}</Link> : <span className="font-medium">{r.player.name}</span>)
-                      : <Link href={teamHref(r.team?.id ?? 0)} className="font-medium underline">{r.team?.name}</Link>}
+                      ? (r.player.id !== null ? <Link href={playerHref(r.player.id)} prefetch={prefetch} className="font-medium underline">{r.player.name}</Link> : <span className="font-medium">{r.player.name}</span>)
+                      : <Link href={teamHref(r.team?.id ?? 0)} prefetch={prefetch} className="font-medium underline">{r.team?.name}</Link>}
                     <span className="block truncate text-xs text-muted-foreground">{r.player ? `${r.team?.name ?? ""} · ` : ""}{r.detail}</span>
                   </span>
                   <span className="text-base font-semibold">{fmt(c.key, r.value)}</span>

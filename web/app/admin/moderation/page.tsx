@@ -96,5 +96,5 @@ function Moderation() {
 }
 
 export default function Page() {
-  return <RequireAuth admin><Moderation /></RequireAuth>;
+  return <RequireAuth admin global><Moderation /></RequireAuth>;
 }

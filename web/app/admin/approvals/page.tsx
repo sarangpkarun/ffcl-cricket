@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { btnGhost, ErrorText, RequireAuth } from "@/components/ui-bits";
 import { api, post } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 type Person = { id: number; name: string; player_code: string } | null;
 type Roster = { id: number; reason: string; team: { id: number; name: string }; out: Person; in: Person; requested_by: Person };
 type Phone = { id: number; reason: string; user: { id: number; name: string; player_code: string }; current_phone: string | null; new_phone: string };
 
 function Approvals() {
+  const { isGlobalAdmin } = useAuth();
   const [roster, setRoster] = useState<Roster[]>([]);
   const [phones, setPhones] = useState<Phone[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -17,11 +19,10 @@ function Approvals() {
 
   const load = useCallback(async () => {
     try {
-      const [r, p] = await Promise.all([api<Roster[]>("/roster-changes?status=pending"), api<Phone[]>("/admin/phone-changes?status=pending")]);
-      setRoster(r);
-      setPhones(p);
+      setRoster(await api<Roster[]>("/roster-changes?status=pending"));
+      if (isGlobalAdmin) setPhones(await api<Phone[]>("/admin/phone-changes?status=pending")); // people's phone numbers are for global admins only
     } catch (e) { setErr((e as Error).message); }
-  }, []);
+  }, [isGlobalAdmin]);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount
   useEffect(() => { void load(); }, [load]);
 
@@ -56,7 +57,7 @@ function Approvals() {
         })}
       </section>
 
-      <section aria-label="Phone number changes" className="space-y-2">
+      {isGlobalAdmin && <section aria-label="Phone number changes" className="space-y-2">
         <h2 className="font-medium">Phone number changes ({phones.length})</h2>
         {phones.length === 0 && <p className="text-sm text-muted-foreground">Nothing waiting.</p>}
         {phones.map((p) => {
@@ -73,7 +74,7 @@ function Approvals() {
             </article>
           );
         })}
-      </section>
+      </section>}
     </div>
   );
 }

@@ -18,11 +18,20 @@ export function createAdmin(email: string, name: string) {
 export const PASSWORD = "password123";
 
 export async function call<T>(path: string, method: string, body?: unknown, token?: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, {
+  const send = () => fetch(`${API}${path}`, {
     method,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  let r: Response;
+  try {
+    r = await send();
+  } catch (e) {
+    // A reused idle connection can be closed by the server at the very moment we use it ("other side closed"); the
+    // request never got through, so sending it again once is safe. Any other failure is real.
+    if (!String((e as { cause?: { message?: string } }).cause?.message ?? "").includes("other side closed")) throw e;
+    r = await send();
+  }
   if (!r.ok) throw new Error(`${method} ${path} -> ${r.status} ${await r.text()}`);
   return r.status === 204 ? (undefined as T) : ((await r.json()) as T);
 }

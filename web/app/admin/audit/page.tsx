@@ -60,5 +60,5 @@ function Audit() {
 }
 
 export default function Page() {
-  return <RequireAuth admin><Audit /></RequireAuth>;
+  return <RequireAuth admin global><Audit /></RequireAuth>;
 }

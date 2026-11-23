@@ -28,12 +28,12 @@ async function Content({ params }: P) {
         <p className="text-sm text-muted-foreground">{p.player.player_code} · {p.season.name}</p>
       </header>
       <BattingBowling t={p.totals} />
-      {an && <section aria-label="Analytics" className="space-y-2"><h3 className="font-medium">Analytics</h3><PlayerAnalyticsView data={an} playerHref={(pid) => `/league/${slug}/players/${pid}`} /></section>}
-      <MatchHistory history={p.history} matchHref={(mid) => `/league/${slug}/matches/${mid}`} />
+      {an && <section aria-label="Analytics" className="space-y-2"><h3 className="font-medium">Analytics</h3><PlayerAnalyticsView data={an} playerHref={(pid) => `/league/${slug}/players/${pid}`} prefetch={false} /></section>}
+      <MatchHistory history={p.history} matchHref={(mid) => `/league/${slug}/matches/${mid}`} prefetch={false} />
       {p.other_seasons.length > 0 && (
         <section aria-label="Other seasons" className="space-y-1 text-sm">
           <h3 className="font-medium">Other seasons</h3>
-          <ul className="flex flex-wrap gap-3">{p.other_seasons.map((s) => <li key={s.id}><Link className="underline" href={`/league/${s.slug}/players/${id}`}>{s.name}</Link></li>)}</ul>
+          <ul className="flex flex-wrap gap-3">{p.other_seasons.map((s) => <li key={s.id}><Link prefetch={false} className="underline" href={`/league/${s.slug}/players/${id}`}>{s.name}</Link></li>)}</ul>
         </section>
       )}
     </div>

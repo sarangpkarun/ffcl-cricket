@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Dispute, DisputeMessage, Match, Season, Team, User
 from app.db.session import get_session
-from app.deps import get_current_user, is_admin, require_admin
+from app.deps import any_admin, get_current_user, is_admin, season_admin
 from app.routers.auth import throttle
 from app.services import disputes as svc
 from app.services.outbox import flush as flush_outbox
@@ -102,7 +102,7 @@ async def mine(status: str = Query(default="all", pattern="^(all|open|closed)$")
 async def for_match(match_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> dict:
     """What I may do about this match, and the disputes about it that I am allowed to see."""
     m = await db.get(Match, match_id)
-    if not m or (m.published_at is None and not await is_admin(db, user)):
+    if not m or (m.published_at is None and not await is_admin(db, user, m.season_id)):
         raise HTTPException(404, "Match not found")
     rows = [d for d in await db.scalars(select(Dispute).where(Dispute.match_id == match_id).order_by(Dispute.id))
             if await svc.level(db, user, d)]
@@ -156,7 +156,7 @@ async def withdraw(dispute_id: int, user: User = Depends(get_current_user), db: 
 @router.get("/admin/disputes")
 async def queue(status: str = Query(default="open", pattern="^(all|open|closed)$"), kind: str | None = None,
                 season_id: int | None = None, assigned: str | None = Query(default=None, pattern="^(me|nobody)$"),
-                admin: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> list[dict]:
+                admin: User = Depends(any_admin), db: AsyncSession = Depends(get_session)) -> list[dict]:
     """Every dispute I may decide (ones I am involved in are not shown here)."""
     q = select(Dispute).order_by(Dispute.created_at).limit(300)
     if status == "open":
@@ -176,7 +176,7 @@ async def queue(status: str = Query(default="open", pattern="^(all|open|closed)$
 
 
 @router.get("/admin/disputes/summary")
-async def summary(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> dict:
+async def summary(admin: User = Depends(any_admin), db: AsyncSession = Depends(get_session)) -> dict:
     now = datetime.now(UTC)
     rows = [d for d in await db.scalars(select(Dispute).where(Dispute.status.in_(svc.OPEN)).limit(500))
             if await svc.level(db, admin, d) == "admin"]
@@ -186,7 +186,7 @@ async def summary(admin: User = Depends(require_admin), db: AsyncSession = Depen
 
 
 @router.post("/admin/disputes/{dispute_id}/take", status_code=204)
-async def take(dispute_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> None:
+async def take(dispute_id: int, admin: User = Depends(season_admin("dispute")), db: AsyncSession = Depends(get_session)) -> None:
     d, _ = await _get(db, dispute_id, admin)
     await svc.take(db, admin, d)
     await db.commit()
@@ -194,7 +194,7 @@ async def take(dispute_id: int, admin: User = Depends(require_admin), db: AsyncS
 
 
 @router.post("/admin/disputes/{dispute_id}/resolve", status_code=204)
-async def resolve(dispute_id: int, body: DecideIn, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> None:
+async def resolve(dispute_id: int, body: DecideIn, admin: User = Depends(season_admin("dispute")), db: AsyncSession = Depends(get_session)) -> None:
     d, _ = await _get(db, dispute_id, admin)
     await svc.decide(db, admin, d, status="resolved", outcome=body.outcome, action=body.action, adjustment_id=body.adjustment_id)
     await db.commit()
@@ -202,7 +202,7 @@ async def resolve(dispute_id: int, body: DecideIn, admin: User = Depends(require
 
 
 @router.post("/admin/disputes/{dispute_id}/dismiss", status_code=204)
-async def dismiss(dispute_id: int, body: DecideIn, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> None:
+async def dismiss(dispute_id: int, body: DecideIn, admin: User = Depends(season_admin("dispute")), db: AsyncSession = Depends(get_session)) -> None:
     d, _ = await _get(db, dispute_id, admin)
     await svc.decide(db, admin, d, status="dismissed", outcome=body.outcome, action="none")
     await db.commit()
@@ -210,7 +210,7 @@ async def dismiss(dispute_id: int, body: DecideIn, admin: User = Depends(require
 
 
 @router.post("/admin/disputes/{dispute_id}/reopen", status_code=204)
-async def reopen(dispute_id: int, body: ReopenIn, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_session)) -> None:
+async def reopen(dispute_id: int, body: ReopenIn, admin: User = Depends(season_admin("dispute")), db: AsyncSession = Depends(get_session)) -> None:
     d, _ = await _get(db, dispute_id, admin)
     await svc.reopen(db, admin, d, body.reason)
     await db.commit()

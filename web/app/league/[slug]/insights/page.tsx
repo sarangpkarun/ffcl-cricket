@@ -16,7 +16,7 @@ async function Content({ params }: P) {
   const { slug } = await params;
   const data = await pub<SeasonAnalytics>(`/seasons/${slug}/analytics`);
   if (!data) notFound();
-  return <div className="space-y-4"><h2 className="sr-only">Insights</h2><SeasonInsightsView data={data} teamHref={(id) => `/league/${slug}/teams/${id}`} /></div>;
+  return <div className="space-y-4"><h2 className="sr-only">Insights</h2><SeasonInsightsView data={data} teamHref={(id) => `/league/${slug}/teams/${id}`} prefetch={false} /></div>;
 }
 
 export default function Page({ params }: P) {

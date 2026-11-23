@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ErrorText, inputCls, RequireAuth } from "@/components/ui-bits";
+import { chooseSeason, rememberSeason } from "@/lib/seasons";
 import { api, type Fixture, type Season, type Team } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -40,7 +41,7 @@ function Card({ f }: { f: Fixture }) {
 }
 
 function Fixtures() {
-  const { isAdmin } = useAuth();
+  const { canAdmin } = useAuth();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [seasonId, setSeasonId] = useState<number | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -53,32 +54,33 @@ function Fixtures() {
   useEffect(() => {
     api<Season[]>("/seasons").then((s) => {
       setSeasons(s);
-      setSeasonId((s.find((x) => x.status === "active") ?? s[0])?.id ?? null);
+      setSeasonId(chooseSeason(s)?.id ?? null);
     }).catch((e) => setErr(e.message));
   }, []);
   useEffect(() => {
     if (seasonId) api<Team[]>(`/seasons/${seasonId}/teams`).then(setTeams).catch(() => setTeams([]));
   }, [seasonId]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (current: () => boolean = () => true) => {
     if (!seasonId) return;
     const q = new URLSearchParams({ status: tab });
     if (teamId) q.set("team_id", teamId);
     if (drafts) q.set("include_drafts", "true");
-    try { setRows(await api<Fixture[]>(`/seasons/${seasonId}/fixtures?${q}`)); setErr(null); } catch (e) { setErr((e as Error).message); }
+    try { const r = await api<Fixture[]>(`/seasons/${seasonId}/fixtures?${q}`); if (current()) { setRows(r); setErr(null); } } catch (e) { setErr((e as Error).message); }
   }, [seasonId, tab, teamId, drafts]);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount and when a filter changes
-    void load();
-    const t = setInterval(() => void load(), 15_000); // live matches change under you
-    return () => clearInterval(t);
+    let live = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount and when the season or a filter changes
+    void load(() => live);
+    const t = setInterval(() => void load(() => live), 15_000); // live matches change under you
+    return () => { live = false; clearInterval(t); };
   }, [load]);
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Fixtures</h1>
       {seasons.length > 1 && (
-        <select aria-label="Season" className={inputCls} value={seasonId ?? ""} onChange={(e) => setSeasonId(Number(e.target.value))}>
+        <select aria-label="Season" className={inputCls} value={seasonId ?? ""} onChange={(e) => { rememberSeason(e.target.value); setSeasonId(Number(e.target.value)); }}>
           {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       )}
@@ -93,7 +95,7 @@ function Fixtures() {
           <option value="">All teams</option>
           {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        {isAdmin && (
+        {canAdmin(seasonId) && (
           <label className="flex items-center gap-2 whitespace-nowrap text-sm">
             <input type="checkbox" checked={drafts} onChange={(e) => setDrafts(e.target.checked)} /> Show drafts
           </label>

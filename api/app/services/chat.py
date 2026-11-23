@@ -27,7 +27,7 @@ from app.db.models import (
     User,
     UserRole,
 )
-from app.deps import ADMIN_ROLES, user_roles
+from app.deps import admin_scope, admin_user_ids, is_admin, user_roles
 
 MAX_BODY = 2000
 EDIT_WINDOW = timedelta(minutes=15)
@@ -44,14 +44,24 @@ async def get_room(db: AsyncSession, room_id: int) -> ChatRoom:
     return room
 
 
-async def _is_admin(db: AsyncSession, user: User) -> bool:
-    return bool(await user_roles(db, user.id) & ADMIN_ROLES)
+async def room_season(db: AsyncSession, room: ChatRoom) -> int | None:
+    """The season a room belongs to (a match room through its match)."""
+    if room.season_id is not None:
+        return room.season_id
+    if room.match_id is not None:
+        return await db.scalar(select(Match.season_id).where(Match.id == room.match_id))
+    return None
+
+
+async def _is_admin(db: AsyncSession, user: User, room: ChatRoom) -> bool:
+    """Admins everywhere; a season admin only in the rooms of their own seasons."""
+    return await is_admin(db, user, await room_season(db, room))
 
 
 async def can_read(db: AsyncSession, room: ChatRoom, user: User) -> bool:
     if user.status != "active":
         return False
-    if await _is_admin(db, user):
+    if await _is_admin(db, user, room):
         return True
     if room.kind == "season":
         if "umpire" in await user_roles(db, user.id):
@@ -131,7 +141,7 @@ async def can_post(db: AsyncSession, room: ChatRoom, user: User) -> bool:
 
 async def is_moderator(db: AsyncSession, room: ChatRoom, user: User) -> bool:
     """Admins everywhere; the match umpire in that match's rooms."""
-    if await _is_admin(db, user):
+    if await _is_admin(db, user, room):
         return True
     if room.kind in ("match", "umpire") and room.match_id:
         match = await db.get(Match, room.match_id)
@@ -172,8 +182,7 @@ async def ensure_match_rooms(db: AsyncSession, match: Match) -> dict[str, ChatRo
 
 async def member_ids(db: AsyncSession, room: ChatRoom) -> set[int]:
     """Everyone who can read the room. Must agree with can_read (a test checks this)."""
-    admins = set(await db.scalars(select(UserRole.user_id).where(UserRole.role.in_(ADMIN_ROLES))))
-    ids = set(admins)
+    ids = await admin_user_ids(db, await room_season(db, room))
     if room.kind == "season":
         ids |= set(await db.scalars(select(UserRole.user_id).where(UserRole.role == "umpire")))
         ids |= set(await db.scalars(
@@ -198,9 +207,14 @@ async def readable_room_ids(db: AsyncSession, user: User) -> set[int]:
     """Set form of can_read over every room, in a handful of queries (used by search)."""
     if user.status != "active":
         return set()
-    if await _is_admin(db, user):
+    scope = await admin_scope(db, user.id)
+    if scope.is_global:
         return set(await db.scalars(select(ChatRoom.id)))
     out: set[int] = set()
+    if scope.seasons:  # a season admin reads every room of their seasons
+        in_season = select(Match.id).where(Match.season_id.in_(scope.seasons))
+        out |= set(await db.scalars(select(ChatRoom.id).where(
+            ChatRoom.season_id.in_(scope.seasons) | ChatRoom.match_id.in_(in_season))))
     roles = await user_roles(db, user.id)
     season_ids = set(await db.scalars(
         select(Team.season_id).join(TeamMember, TeamMember.team_id == Team.id)

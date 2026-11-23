@@ -26,14 +26,15 @@ export function ErrorText({ msg }: { msg: string | null }) {
   ) : null;
 }
 
-export function RequireAuth({ children, admin }: { children: React.ReactNode; admin?: boolean }) {
-  const { me, loading, isAdmin } = useAuth();
+export function RequireAuth({ children, admin, global }: { children: React.ReactNode; admin?: boolean; global?: boolean }) {
+  const { me, loading, unreachable, isAdmin, isGlobalAdmin } = useAuth();
   const router = useRouter();
   useEffect(() => {
-    if (!loading && !me) router.replace("/login");
-  }, [loading, me, router]);
+    if (!loading && !me && !unreachable) router.replace("/login");
+  }, [loading, me, unreachable, router]);
+  if (!loading && !me && unreachable) return <p role="status" className="text-sm">Cannot reach FFCL right now. You are still signed in; trying again…</p>;
   if (loading || !me) return <p className="text-sm text-muted-foreground">Loading…</p>;
-  if (admin && !isAdmin)
+  if ((admin && !isAdmin) || (global && !isGlobalAdmin))
     return (
       <p className="text-sm">
         Admins only. <Link href="/" className="underline">Back home</Link>

@@ -97,8 +97,8 @@ function Inbox() {
               onClick={() => { void markRead(n.id); if (n.data.link) router.push(n.data.link); }}
             >
               <p className="text-sm font-medium">{!n.read && <span aria-label="unread">● </span>}{n.title}</p>
-              {n.body && <p className="text-sm text-muted-foreground">{n.body}</p>}
-              <p className="mt-1 text-[11px] text-muted-foreground">{ago(n.created_at)}</p>
+              {n.body && <p className={`text-sm ${n.read ? "text-muted-foreground" : "text-foreground/80"}`}>{n.body}</p>}
+              <p className={`mt-1 text-xs ${n.read ? "text-muted-foreground" : "text-foreground/80"}`}>{ago(n.created_at)}</p>
             </button>
           </li>
         ))}

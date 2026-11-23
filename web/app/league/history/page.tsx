@@ -10,13 +10,13 @@ async function Content() {
   const rows = (await pub<PubHistory[]>("/history")) ?? [];
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">No finished seasons yet.</p>;
   const lead = (slug: string, label: string, l: PubHistory["top_batter"]) => l && (
-    <li>{label}: {l.player.id !== null ? <Link className="underline" href={`/league/${slug}/players/${l.player.id}`}>{l.player.name}</Link> : l.player.name} {l.value}</li>
+    <li>{label}: {l.player.id !== null ? <Link prefetch={false} className="underline" href={`/league/${slug}/players/${l.player.id}`}>{l.player.name}</Link> : l.player.name} {l.value}</li>
   );
   return (
     <>
       {rows.map((s) => (
         <section key={s.season.id} aria-label={s.season.name} className="space-y-2 rounded-lg border p-3 text-sm">
-          <h2 className="font-medium"><Link href={`/league/${s.season.slug}`} className="underline">{s.season.name}</Link> <span className="text-xs text-muted-foreground">{s.teams} teams · {s.matches} matches</span></h2>
+          <h2 className="font-medium"><Link prefetch={false} href={`/league/${s.season.slug}`} className="underline">{s.season.name}</Link> <span className="text-xs text-muted-foreground">{s.teams} teams · {s.matches} matches</span></h2>
           {s.champion && <p className="font-medium">🏆 Champions: {s.champion.name}</p>}
           <ol className="divide-y rounded border">
             {s.table.map((r) => <li key={r.position} className="flex justify-between p-2"><span>{r.position}. {r.team}</span><span className="text-muted-foreground">P{r.played} W{r.won} L{r.lost} · {r.points} pts · {r.nrr >= 0 ? "+" : ""}{r.nrr.toFixed(3)}</span></li>)}

@@ -36,7 +36,7 @@ export function LiveMatch({ matchId, initial, slug }: { matchId: number; initial
       <Scoreboard live={live} />
       {live.innings.some((i) => i.status !== "pending") && <AnalyticsPanel matchId={matchId} seq={live.match.seq} publicSite />}
       {live.over && live.over.state !== "resolved" && !finished && <Over over={live.over} />}
-      {potm && <p className="text-sm">⭐ Player of the match: {potm.id !== null ? <Link className="underline" href={`/league/${slug}/players/${potm.id}`}>{potm.name}</Link> : potm.name}</p>}
+      {potm && <p className="text-sm">⭐ Player of the match: {potm.id !== null ? <Link prefetch={false} className="underline" href={`/league/${slug}/players/${potm.id}`}>{potm.name}</Link> : potm.name}</p>}
     </div>
   );
 }

@@ -19,7 +19,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const m = await pubPlain<PubMatch>(`/matches/${id}`);
   if (!m) return { title: "Match not found", robots: { index: false } };
   const t = title(m);
-  const desc = m.live.match.result ?? `${t} in ${m.season.name}. Follow the scorecard live.`;
+  const r = m.live.match.result;
+  const desc = r ? `${t} in ${m.season.name}: ${r}. Full scorecard, over-by-over charts and player figures.` : `${t} in ${m.season.name}. Follow the scorecard live, ball by ball.`;
   return { title: t, description: desc, alternates: { canonical: `/league/${slug}/matches/${id}` }, openGraph: { title: t, description: desc } };
 }
 
@@ -43,9 +44,9 @@ async function Content({ params }: P) {
     <div className="space-y-4">
       <JsonLd data={matchJsonLd(m, slug, id)} />
       <p className="text-sm">
-        <Link className="underline" href={`/league/${slug}/teams/${match.team_a_id}`}>{match.teams[String(match.team_a_id)]}</Link>
+        <Link prefetch={false} className="underline" href={`/league/${slug}/teams/${match.team_a_id}`}>{match.teams[String(match.team_a_id)]}</Link>
         {" vs "}
-        <Link className="underline" href={`/league/${slug}/teams/${match.team_b_id}`}>{match.teams[String(match.team_b_id)]}</Link>
+        <Link prefetch={false} className="underline" href={`/league/${slug}/teams/${match.team_b_id}`}>{match.teams[String(match.team_b_id)]}</Link>
         {m.round_label ? ` · ${m.round_label}` : ""}
       </p>
       <LiveMatch matchId={Number(id)} initial={m.live} slug={slug} />

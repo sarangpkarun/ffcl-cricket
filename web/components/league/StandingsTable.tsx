@@ -13,7 +13,7 @@ export function Form({ form }: { form: string[] }) {
 }
 
 /** The points table. Shared by the signed-in app and the public site; only the team link differs. */
-export function StandingsTable({ data, teamHref }: { data: Standings; teamHref: (teamId: number) => string }) {
+export function StandingsTable({ data, teamHref, prefetch = true }: { data: Standings; teamHref: (teamId: number) => string; prefetch?: boolean }) {
   return (
     <>
       <div className="overflow-x-auto rounded-lg border">
@@ -31,7 +31,7 @@ export function StandingsTable({ data, teamHref }: { data: Standings; teamHref: 
                 className={`border-t ${r.qualified ? "border-l-4 border-l-green-600" : ""} ${i === data.qualifiers - 1 ? "border-b-2 border-b-foreground/30" : ""}`}>
                 <td className="px-2 py-2">{r.position}</td>
                 <td className="py-2">
-                  <Link href={teamHref(r.team.id)} className="flex items-center gap-2 font-medium">
+                  <Link href={teamHref(r.team.id)} prefetch={prefetch} className="flex items-center gap-2 font-medium">
                     <span className="inline-block h-3 w-3 rounded-full" style={{ background: r.team.color ?? "#999" }} />{r.team.name}
                   </Link>
                   {r.form.length > 0 && <Form form={r.form} />}

@@ -33,4 +33,6 @@ It plays whole matches concurrently (with duplicate submits and racing resolves)
 
 A whole season: `uv run python -m loadtest.season --teams 6` generates and publishes a double round robin for 6 teams, plays all 30 league matches and the semi-finals and final (six at a time), then rebuilds the table from the ball events and compares it, checks player runs against the results ledger, archives the season, and times every read endpoint with a season's data (about 12 seconds in all on a dev laptop, p95 under 160 ms per read).
 
+The public side: `uv run python -m loadtest.public_load --viewers 200 --readers 40 --push 500 --api http://localhost:8010` (run the API with `TRUST_PROXY=true` so each simulated viewer has its own address, and for the push part the API, the script and an arq worker with `PUSH_ENABLED=true PUSH_DRY_RUN=true`). It watches a live match with 200 anonymous sockets while 40 readers browse the public pages, checks every viewer ends on the final update and that one address cannot open more sockets than allowed, and fans a notification out to 500 devices.
+
 On a dev laptop (one uvicorn worker, auto-reload on): 10 matches = 1,861 requests in ~8s, 30 matches = 5,581 requests in ~23s, p95 about half a second, zero errors. Production should run several workers behind Nginx.

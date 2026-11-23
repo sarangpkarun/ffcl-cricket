@@ -12,11 +12,11 @@ function PublicHeader() {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-4">
-        <Link href="/" className="font-semibold">FFCL</Link>
+        <Link href="/" prefetch={false} className="font-semibold">FFCL</Link>
         <nav aria-label="Site" className="flex items-center gap-4 text-sm">
-          <Link href="/league">Seasons</Link>
-          <Link href="/league/history">History</Link>
-          {me ? <Link href="/fixtures" className="rounded-md border px-3 py-1">Open the app</Link> : <Link href="/login" className="rounded-md border px-3 py-1">Sign in</Link>}
+          <Link href="/league" prefetch={false}>Seasons</Link>
+          <Link href="/league/history" prefetch={false}>History</Link>
+          {me ? <Link href="/fixtures" className="rounded-md border px-3 py-1">Open the app</Link> : <Link href="/login" prefetch={false} className="rounded-md border px-3 py-1">Sign in</Link>}
         </nav>
       </div>
     </header>
@@ -36,7 +36,7 @@ export function Chrome({ children }: { children: React.ReactNode }) {
     return (
       <>
         <PublicHeader />
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-12 pt-4">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-3xl flex-1 px-4 pb-12 pt-4 outline-none">{children}</main>
         <footer className="border-t py-4 text-center text-xs text-muted-foreground">FFCL digit cricket league</footer>
       </>
     );
@@ -44,7 +44,7 @@ export function Chrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <TopBar />
-      <main className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-4">{children}</main>
+      <main id="main" tabIndex={-1} className="mx-auto w-full max-w-md flex-1 px-4 pb-24 pt-4 outline-none">{children}</main>
       <Suspense fallback={null}>
         <BottomNav />
       </Suspense>

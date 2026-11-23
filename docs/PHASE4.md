@@ -72,7 +72,7 @@ Defaults I chose (tell me if any are wrong):
 - Lightweight SVG chart components (worm, bars, trend); no chart library. Match analytics tab, team and player analytics sections, a Season insights page. Public versions read the same data (digit habits only for completed seasons).
 - **Exit:** every analytics total reconciles with the scorecard and ledger (a test sums the over-by-over runs to the innings total), and digit habits are absent while a season is active.
 
-### Sprint 18: Multiple seasons, polish and launch checks (week 5)
+### Sprint 18: Multiple seasons, polish and launch checks (week 5) ✅ done
 - `is_admin` with a season argument and scoped admin roles; admin People screen can grant a season-scoped admin; the route-matrix test.
 - Season switcher in the app (remember the last season), "start a new season from a previous one" (copies the rule version and optionally the teams without matches), admin dashboard per season.
 - Accessibility pass (axe checks in Playwright on every public page and the main signed-in pages, keyboard use, colour contrast, focus order, reduced motion), performance pass (bundle sizes, image and font loading, `cacheLife` tuning, Lighthouse run on key pages), SEO check.
@@ -199,3 +199,36 @@ Decisions and limits:
 - Over types come from the rule version the match was played under, so a later rule change does not rewrite old analytics.
 - Head-to-head lists show the five players faced most; fuller lists would need a dedicated page.
 - Analytics are computed on request (a season is a few thousand balls); the public side caches each response for 5 to 30 seconds.
+
+## Sprint 18 outcome
+Built:
+- **Season-scoped admins.** A `tournament_admin` role with a season is an admin of that season only; without a season (and `super_admin`) it is global. `deps.is_admin(db, user, season_id)` now **fails closed**: with no season given only global admins qualify, so anything that forgets to say which season simply denies a season admin. Every season-keyed route uses one dependency, `season_admin(by)` (the season is found from the season, match, team, dispute, adjustment, duty or roster-change id in the path), and global-only routes (people, rule versions, moderation, the audit log, phone-number approvals, creating seasons) keep `require_admin`, which now means global admins only. A thing that does not exist is judged as "no season", so a season admin gets 403 rather than 404 and cannot probe ids. The checks inside services follow the same rule: playing and umpiring (`ensure_official`), draft visibility, the chat rooms (a season admin reads and moderates only their own season's rooms), who is notified about approvals and disputes, dispute judging, the roster list.
+- **Granting**: only a super admin grants admin roles; the People screen has a "Only <season>" selector next to the tournament-admin role; a super admin cannot be scoped; revoking takes effect immediately. `/me` now says where someone is an admin (`admin: {is_global, seasons}`) and the screens hide what a season admin cannot use.
+- **Season dashboard** (`/admin/seasons/<id>`): teams, players, matches by state, the next matches, what is waiting (roster changes, disputes, missed duties), adjustments, and links to manage it. Admin home lists only the seasons you manage.
+- **Start the next season** (`POST /seasons/{id}/clone`, global admins): a hidden draft with the same rule version, optionally the teams, and optionally the approved players with their captains and vice-captains (suspended players are left out). Matches, results, adjustments and the champion are never copied.
+- **Season switcher**: every season selector in the signed-in app remembers the last choice (on this device) and starts there; a season admin's admin screens list only their own seasons.
+- **Accessibility**: axe checks (WCAG 2.0/2.1 A and AA) pass on every public page, the main signed-in pages and every admin screen (fixed along the way: low-contrast text on unread notifications, in the season setup box and in chat notices), a "skip to main content" link and a focus target, reduced-motion support (no animation when the person asks for none), and a keyboard test.
+- **Performance and SEO**: Lighthouse on public pages (mobile settings, three runs each): performance 94 to 97, accessibility 100, best practices 100, SEO 100. Changes: title, description, canonical and share tags are now in the head for every visitor (previously streamed into the body, which link previews such as WhatsApp and simple crawlers do not read), the unused monospace font is gone, and links on the public site no longer prefetch (transfer fell from about 450 KB to 230 KB, JavaScript 145 KB, and it removes a multiplier on server and API load for every public page view). A browser test keeps these promises: metadata in the head of every public page, no link prefetches, a script and total size budget, and that the share images are real pictures.
+- **Public load test** (`loadtest/public_load.py`): 200 anonymous sockets on a live match plus 40 readers clicking around the public pages while the match is played: every viewer ends on the final sequence number without going backwards, public reads have p50 23 ms and p95 230 ms (including each endpoint's first uncached read), a sixth socket from one address is refused, and a fan-out of one notification to 500 devices reaches every device through the worker in 3.6 seconds (138 a second, dry run).
+- No new migration.
+
+Bugs found by the new checks and fixed:
+- **Signing out on a network hiccup.** The app treated any failed `/me` request as an invalid session and wiped the saved sign-in, so a request cancelled by navigation or a dropped mobile connection logged people out. Now only a real 401 or 403 ends the session; a network or server error keeps it, shows "Cannot reach FFCL right now" and retries every few seconds and when the connection returns. Unit tests cover both directions.
+- **The per-match share image crashed** (its layout had elements the image renderer rejects), so link previews of match pages had no picture. Fixed, and the test now fetches the image.
+- **A slow reply for the wrong season overwriting the right one.** Changing the season on Fixtures, Table, Leaderboards, Insights, Adjustments or Duties started a new request but did not ignore the old one, so under load the earlier season's answer could land last and be shown. Every selector now discards answers for a season you have since left.
+- Missing canonical address on the seasons page; thin match descriptions (now a sentence with the teams, season and result).
+
+Tests: 17 scoped-admin tests (a matrix that sends a request to every season-protected route using another season's ids, and every global-only route, as a season admin and expects 403 each time; a guard that fails if any `/admin` route has no guard; every id-to-season resolver; fail-closed `is_admin`; what a season admin can do in their season and not in another; rosters, disputes, notifications, chat and drafts; granting and revoking; missing ids; global admins unchanged; clone and the dashboard), 4 session unit tests, and browser tests for seasons (scoped admin, dashboard, clone, remembered season), accessibility (public, signed-in and admin pages), keyboard and reduced motion, and SEO and performance.
+
+Decisions and limits:
+- A season admin cannot manage people, rules, chat moderation, the audit log or phone numbers, and cannot create seasons; those stay with global admins.
+- A season admin who is also a member or captain of a team in a dispute is recused like any other admin.
+- Public pages need no JavaScript to read; prefetching is switched off there, so the first click on a link costs one request.
+
+## Phase 4 definition of done
+- A signed-out visitor can follow the league (live match, table, fixtures, results, stats, history, rules) with fast, indexable pages, and nothing private is exposed: Sprint 14, the public API tests and the signed-out browser tests, Lighthouse 94 to 97 performance and 100 for SEO, accessibility and best practices.
+- Players can install the app and receive browser push for the kinds they choose; dead devices are cleaned up: Sprint 15 (the one thing not proven by an automated test is delivery to a real phone, listed in the launch checks).
+- Disputes and complaints are raised, discussed, resolved and audited in the app: Sprint 16.
+- Analytics reconcile with scorecards and never reveal digit habits during a live season: Sprint 17.
+- Two seasons run side by side with season-scoped admins, and a scoped admin cannot touch another season: Sprint 18 (the matrix test).
+- Accessibility, performance and SEO checks pass; tests, lint, browser tests and the load tests are green; documented here.

@@ -32,7 +32,7 @@ async function Content({ params }: P) {
         <ul className="grid gap-2 sm:grid-cols-2">
           {t.members.map((m) => (
             <li key={m.player.player_code} className="rounded-lg border p-3 text-sm">
-              {m.player.id !== null ? <Link className="font-medium underline" href={`/league/${slug}/players/${m.player.id}`}>{m.player.name}</Link> : <span className="font-medium">{m.player.name}</span>}
+              {m.player.id !== null ? <Link prefetch={false} className="font-medium underline" href={`/league/${slug}/players/${m.player.id}`}>{m.player.name}</Link> : <span className="font-medium">{m.player.name}</span>}
               {m.captain && " ©"}
             </li>
           ))}
@@ -46,7 +46,7 @@ async function Content({ params }: P) {
               <tbody>
                 {t.players.filter((p) => p.player).map((p) => (
                   <tr key={p.player!.player_code} className="border-t">
-                    <td className="px-3 py-2">{p.player!.id !== null ? <Link className="underline" href={`/league/${slug}/players/${p.player!.id}`}>{p.player!.name}</Link> : p.player!.name}</td>
+                    <td className="px-3 py-2">{p.player!.id !== null ? <Link prefetch={false} className="underline" href={`/league/${slug}/players/${p.player!.id}`}>{p.player!.name}</Link> : p.player!.name}</td>
                     <td className="px-2 text-right">{p.matches}</td><td className="px-2 text-right">{p.runs}</td><td className="px-3 text-right">{p.wickets}</td>
                   </tr>
                 ))}

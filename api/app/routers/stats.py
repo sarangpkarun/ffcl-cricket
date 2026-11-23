@@ -150,11 +150,11 @@ async def _finished(db: AsyncSession, match_id: int) -> tuple[Match, MatchResult
 @router.get("/matches/{match_id}/potm")
 async def get_potm(match_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_session)) -> dict:
     m, res = await _finished(db, match_id)
-    if m.published_at is None and not await is_admin(db, user):
+    if m.published_at is None and not await is_admin(db, user, m.season_id):
         raise HTTPException(404, "Match not found")
     award = await db.scalar(select(MatchAward).where(MatchAward.match_id == match_id, MatchAward.kind == "potm"))
     eligible = res is not None and res.result_type in svc.COUNTED
-    official = m.umpire_id == user.id or await is_admin(db, user)
+    official = m.umpire_id == user.id or await is_admin(db, user, m.season_id)
     out: dict = {"eligible": eligible, "can_choose": eligible and official, "award": None, "suggestion": None, "candidates": []}
     names = {}
     if eligible:
@@ -183,7 +183,7 @@ async def get_potm(match_id: int, user: User = Depends(get_current_user), db: As
 async def set_potm(match_id: int, body: PotmIn, user: User = Depends(get_current_user),
                    db: AsyncSession = Depends(get_session)) -> dict:
     m, res = await _finished(db, match_id)
-    if m.umpire_id != user.id and not await is_admin(db, user):
+    if m.umpire_id != user.id and not await is_admin(db, user, m.season_id):
         raise HTTPException(403, "Only the match umpire or an admin can choose the player of the match")
     await ensure_match_open(db, m)
     if res is None or res.result_type not in svc.COUNTED:
