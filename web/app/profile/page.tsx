@@ -105,6 +105,7 @@ function Profile() {
       </section>
       {me.phone_verified && <PhoneChange onChanged={() => void reload()} />}
 
+      <Link href="/disputes" className={`${btnGhost} block text-center`}>My disputes</Link>
       {isAdmin && <Link href="/admin" className={`${btnGhost} block text-center`}>Admin dashboard</Link>}
       <div className="flex gap-3">
         <button className={`${btnGhost} flex-1`} onClick={async () => { await logout(); router.replace("/login"); }}>Log out</button>

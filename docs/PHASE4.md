@@ -60,7 +60,7 @@ Defaults I chose (tell me if any are wrong):
 - `services/delivery.py` (channel interface, push channel), worker job `send_push`, retry with backoff, deletion of dead endpoints, skip when the user has a live socket, VAPID keys from environment (the production guard refuses to start without them when push is enabled).
 - **Exit:** a device subscribes, an over assignment produces a push that opens the right match, an unsubscribed or expired device is cleaned up, and nothing hidden is in any payload.
 
-### Sprint 16: Disputes and complaints (week 4)
+### Sprint 16: Disputes and complaints (week 4) ✅ done
 - Migration 0013. Raise (captain, vice-captain, umpire, within the window; any player for conduct complaints), thread of messages, admin-only internal notes, status flow, outcome text, link to the action taken (result reversal, ball correction, points adjustment) with one-click shortcuts to the existing screens.
 - Notifications to the raiser, the other team's captain and admins; a worker job reminds admins about disputes open more than 72 hours.
 - Screens: raise from a finished match page, "My disputes", admin **Disputes** queue (filters, assign to me, resolve or dismiss), dispute count badge on the admin home.
@@ -161,3 +161,22 @@ Decisions and limits:
 - iPhone only delivers push to apps added to the Home Screen (iOS 16.4 or later); the settings page says so.
 - The Docker `worker` container needs the same push settings as the API (they come from `.env`).
 - Push is off unless `PUSH_ENABLED=true` and the keys are set; with it off the app behaves exactly as before.
+
+## Sprint 16 outcome
+Built:
+- **Raising** (`services/disputes.py`, `routers/disputes.py`): a captain, vice-captain or the match umpire can dispute a finished match (the score or result, who was allowed to play, the umpiring, or something else) within **48 hours** of its result (`dispute_window_hours` in the rule set, editable on the rule versions screen like every other setting). Any player of the season can report **conduct** at any time, with or without a match and optionally naming a team. One open dispute per person per match, at most three open match-less complaints per person per season, rate limits, and nothing new in an archived season. Disputes about a match are only possible once it has a result.
+- **Privacy**: never public (a test checks every public response). A dispute is visible to whoever raised it, the captains and vice-captains of the teams involved (both teams of the match, the team complained about, and the raiser's own team) and the admins who may decide it. Everyone else gets the same "not found" as for a dispute that does not exist.
+- **The conversation**: parties reply while it is open; admins can add **private notes** that only deciding admins see (parties are refused if they try). Public messages notify the others, private notes notify nobody.
+- **Deciding**: an admin takes it (status "being looked at"), then resolves or dismisses it with an outcome that everyone involved reads, and records what was done: result reversed, ball corrected, points adjusted (linked to a real adjustment in that season, which must exist), penalty applied, nothing, or other. The changes themselves still happen with the tools that already exist (the match page and the points adjustments screen; the dispute page links to both). A closed dispute can be reopened by an admin with a reason; the person who raised it can withdraw it. Everything is audited.
+- **Recusal**: an admin who plays for or captains a team involved, or who raised the dispute, is a party, not a judge. They cannot see the private notes, take, resolve, dismiss or reopen it, do not see it in the admin queue or counts, and are not asked to look at it. An admin who is not an ordinary captain or the raiser but is a plain member of an involved team cannot see it at all.
+- **Reminders**: a daily job tells the admins who may decide about any dispute that has waited more than 72 hours (once a day per dispute); the admin queue marks them in red and the admin home shows how many are waiting.
+- **Screens**: a Disputes panel on finished matches (raise one, see the ones you are allowed to see, and why you cannot if you cannot), **Disputes** (mine, with a "report a conduct problem" form), the dispute page (conversation, outcome, withdraw, and for admins take, decide with links to the tools, private notes, reopen), and the admin **Disputes** queue (status, kind and "mine or nobody yet" filters, with a waiting count and a badge on the admin home). A link to My disputes is on the profile page. New notification kind "dispute" (on by default, including as a push).
+- Migration 0013 (`disputes`, `dispute_messages`).
+
+Tests: 17 API tests (who may raise and when, the window coming from the rule set, one open dispute per person, conduct rules and limits, archived seasons, visibility to every kind of person, nothing public, messages and private notes, the full take-resolve-reopen lifecycle with audit entries, dismiss and withdraw, recusal of an admin on the disputed team, of an admin captain and of an admin who raised it, the queue filters and summary, and the stale reminder once a day for the right admins) and a browser test (a captain raises a dispute from the match page, the other captain replies, an outsider is told it does not exist, the admin takes it, writes a private note, resolves it linking a points adjustment, both captains see the outcome, the private note never reaches Team A, and nothing appears on the public site).
+
+Decisions and limits:
+- The 48-hour window runs from when the result was first decided; a later correction does not restart it (admins can always act directly, and can reopen a dispute that was already raised).
+- A dispute does not change any result by itself; the admin does that with the existing tools and records it. This keeps one place where results change.
+- A recused admin who is the only admin cannot decide a dispute about their own team; another admin must be available (a second admin is recommended before launch).
+- Messages are plain text; there are no attachments.

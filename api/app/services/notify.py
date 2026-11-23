@@ -32,6 +32,7 @@ KINDS: dict[str, tuple[str, bool]] = {
     "roster": ("A roster change involving me or my team is decided", True),
     "phone": ("My phone number change is decided", True),
     "approval": ("Something needs an admin's approval", True),
+    "dispute": ("A dispute I am part of is updated", True),
 }
 
 

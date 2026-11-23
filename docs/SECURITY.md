@@ -98,6 +98,16 @@ Accepted for now (Phase 5):
 | N5 | The service worker caching the wrong thing (a stale scoreboard, or a signed-in page for the wrong person). | It stores only the offline page and an icon and never caches pages or API responses. |
 | N6 | Push keys. | The private key lives in the server environment only (never committed, never sent to the browser); the public key is served from `/push/key`; the production guard refuses to start with push enabled and no keys. |
 
+## Addendum: disputes (Sprint 16)
+| # | Finding | Fix or decision |
+|---|---|---|
+| D1 | Disputes contain accusations and private details. | Never in the public API (scanned by a test); visible only to the raiser, the leaders of the teams involved and deciding admins; everybody else gets the same "not found" as for a dispute that does not exist, so even its existence is not revealed. |
+| D2 | An admin could rule on their own team's dispute. | Admins who belong to an involved team or raised it are parties, not judges: they cannot see private notes, decide, or even see the dispute in the queue; they are not notified. Tested for a plain member, a captain and a raiser. |
+| D3 | Private notes leaking to the people they are about. | Notes are filtered on the server for everyone but deciding admins, are refused from parties, and send no notifications. |
+| D4 | Spam and harassment through disputes. | Only captains, vice-captains and the umpire can dispute a match (and only inside the window); conduct complaints are limited to players of that season (3 open at a time without a match); one open dispute per person per match; hourly rate limits on raising and replying; the person raising can be seen by the organisers; every step is audited. |
+| D5 | Disputes used to rewrite history of a closed season. | No new disputes and no reopening in an archived season. |
+| D6 | A resolution that points at an unrelated adjustment. | A linked points adjustment must exist and belong to the same season. |
+
 ## Re-running the checks
 
 ```

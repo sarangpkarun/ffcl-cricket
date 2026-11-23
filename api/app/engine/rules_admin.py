@@ -44,6 +44,7 @@ def validate(cfg: dict[str, Any]) -> list[str]:
     _int(cfg, "players_per_team", 2, 15, errors)
     _int(cfg, "submission_seconds", 30, 1800, errors)
     _int(cfg, "umpire_duty_penalty", 0, 10, errors)
+    _int(cfg, "dispute_window_hours", 1, 720, errors)
     _int(cfg, "normal_over.max_repeat_one_digit", 1, 6, errors)
     _int(cfg, "normal_over.max_repeat_other", 1, 6, errors)
     _int(cfg, "stats.min_balls_strike_rate", 1, 200, errors)

@@ -7,6 +7,8 @@ import { api, post, type Season } from "@/lib/api";
 
 function Admin() {
   const [seasons, setSeasons] = useState<Season[]>([]);
+  const [disputes, setDisputes] = useState<{ open: number; in_review: number } | null>(null);
+  useEffect(() => { api<{ open: number; in_review: number }>("/admin/disputes/summary").then(setDisputes).catch(() => {}); }, []);
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(() => api<Season[]>("/seasons").then(setSeasons).catch((e) => setErr(e.message)), []);
@@ -16,6 +18,7 @@ function Admin() {
     <div className="space-y-5">
       <Link href="/admin/users" className="block rounded-lg border p-3 text-center text-sm">👥 People (roles, suspend)</Link>
       <Link href="/admin/moderation" className="block rounded-lg border p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>
+      <Link href="/admin/disputes" className="block rounded-lg border p-3 text-center text-sm">⚖️ Disputes{disputes && disputes.open + disputes.in_review > 0 && <span className="ml-2 rounded-full bg-red-600 px-2 text-xs text-white" aria-label={`${disputes.open + disputes.in_review} waiting`}>{disputes.open + disputes.in_review}</span>}</Link>
       <Link href="/admin/approvals" className="block rounded-lg border p-3 text-center text-sm">✅ Approvals (roster changes, phone numbers)</Link>
       <Link href="/admin/rules" className="block rounded-lg border p-3 text-center text-sm">📏 Rule versions</Link>
       <Link href="/admin/audit" className="block rounded-lg border p-3 text-center text-sm">🧾 Audit log</Link>

@@ -23,6 +23,7 @@ DEFAULT_RULES: dict[str, Any] = {
     "tiebreakers": ["points", "nrr", "wins", "head_to_head", "name"],
     "knockout": {"qualifiers": 4, "tie": "higher_seed"},
     "stats": {"min_balls_strike_rate": 12, "min_balls_economy": 12},  # qualifiers for the rate leaderboards
+    "dispute_window_hours": 48,  # how long after a result a captain or the umpire may dispute it
     "umpire_duty_penalty": 1,  # points a team loses when the umpire it supplied does not turn up
 }
 

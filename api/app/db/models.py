@@ -498,3 +498,38 @@ class PushSubscription(Base):
     created_at: Mapped[datetime] = _now()
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failures: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class Dispute(Base):
+    """A complaint about a match (a result, an eligibility question, the umpiring) or about conduct.
+
+    Never public. Seen by whoever raised it, the captains of the teams involved, and admins who are not
+    themselves involved."""
+
+    __tablename__ = "disputes"
+    id: Mapped[int] = _pk()
+    season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), index=True)
+    match_id: Mapped[int | None] = mapped_column(ForeignKey("matches.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(12))  # scoring|conduct|eligibility|umpiring|other
+    against_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
+    raised_by: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    raised_as: Mapped[str] = mapped_column(String(12))  # captain|vice_captain|umpire|player
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(10), default="open")  # open|in_review|resolved|dismissed|withdrawn
+    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    outcome: Mapped[str | None] = mapped_column(Text)
+    resolution_ref: Mapped[dict | None] = mapped_column(JSON)  # what was done: {"action": ..., "adjustment_id": ...}
+    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DisputeMessage(Base):
+    __tablename__ = "dispute_messages"
+    id: Mapped[int] = _pk()
+    dispute_id: Mapped[int] = mapped_column(ForeignKey("disputes.id"), index=True)
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    body: Mapped[str] = mapped_column(Text)
+    internal: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")  # admin notes
+    created_at: Mapped[datetime] = _now()
