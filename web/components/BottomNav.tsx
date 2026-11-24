@@ -24,7 +24,7 @@ export function BottomNav() {
               <Link
                 href={i.href}
                 aria-current={active ? "page" : undefined}
-                className={`block py-3 text-center text-sm ${active ? "font-semibold" : "text-muted-foreground"}`}
+                className={`flex min-h-16 items-center justify-center text-center text-sm ${active ? "font-semibold" : "text-muted-foreground"}`}
               >
                 {i.label}
               </Link>
