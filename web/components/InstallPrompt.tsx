@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { HOW, isStandalone, platform, useInstallEvent, type Platform } from "@/lib/install";
 
-type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 const KEY = "ffcl.install.dismissed";
-
-const standalone = () => window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
+const ANDROID_WAIT_MS = 6000; // how long to wait for Chrome's own install offer before explaining the menu instead
 
 function remembered(): boolean {
   try {
@@ -16,35 +14,27 @@ function remembered(): boolean {
   }
 }
 
-/** Offers to install FFCL: Chrome and Edge give us a prompt, Safari on iPhone needs the Share menu so we explain it. */
+/**
+ * Offers to install FFCL. Chrome and Edge give us an install button; iPhone and iPad have none, so we explain the Share menu; and if an
+ * Android browser does not offer the button (Chrome decides that itself), we explain the menu after a few seconds.
+ */
 export function InstallPrompt() {
-  const [event, setEvent] = useState<InstallEvent | null>(null);
-  const [ios, setIos] = useState(false);
-  const [hidden, setHidden] = useState(true);
+  const event = useInstallEvent();
+  const [kind, setKind] = useState<Platform | null>(null);
+  const [eligible, setEligible] = useState(false); // not installed yet and not dismissed
+  const [late, setLate] = useState(false);
 
   useEffect(() => {
-    if (standalone() || remembered()) return;
-    const onPrompt = (e: Event) => {
-      e.preventDefault(); // keep it until the person asks
-      setEvent(e as InstallEvent);
-      setHidden(false);
-    };
-    const onInstalled = () => setHidden(true);
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    if (isIos()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- iPhone has no install event, so show the hint
-      setIos(true);
-      setHidden(false);
-    }
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
+    if (isStandalone() || remembered()) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the device is only known in the browser
+    setKind(platform());
+    setEligible(true);
+    const t = setTimeout(() => setLate(true), ANDROID_WAIT_MS);
+    return () => clearTimeout(t);
   }, []);
 
   const dismiss = () => {
-    setHidden(true);
+    setEligible(false);
     try {
       localStorage.setItem(KEY, "1");
     } catch {
@@ -52,14 +42,13 @@ export function InstallPrompt() {
     }
   };
 
-  if (hidden || (!event && !ios)) return null;
+  const how = kind && kind !== "other" && (kind !== "android" || late) ? HOW[kind] : null;
+  if (!eligible || (!event && !how)) return null;
   return (
-    <aside aria-label="Install the app" className="fixed inset-x-3 bottom-16 z-20 mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-background p-3 text-sm shadow-lg">
-      <p className="flex-1">
-        {event ? "Install FFCL on your phone for quick access and match alerts." : "To install FFCL, tap Share, then “Add to Home Screen”."}
-      </p>
+    <aside aria-label="Install the app" className="fixed inset-x-3 bottom-20 z-20 mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-background p-3 text-sm shadow-lg">
+      <p className="flex-1">{event ? "Install FFCL on your phone for quick access and match alerts." : `To install FFCL: ${how}`}</p>
       {event && (
-        <button className="rounded-md bg-foreground px-3 py-2 text-background" onClick={async () => { await event.prompt(); await event.userChoice; setEvent(null); dismiss(); }}>
+        <button className="rounded-md bg-foreground px-3 py-2 text-background" onClick={async () => { await event.prompt(); await event.userChoice; dismiss(); }}>
           Install
         </button>
       )}

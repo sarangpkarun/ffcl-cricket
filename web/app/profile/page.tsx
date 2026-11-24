@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { btnCls, btnGhost, ErrorText, Field, RequireAuth } from "@/components/ui-bits";
 import { api, del, patch, post } from "@/lib/api";
 import { Devices } from "@/components/profile/Devices";
+import { InstallApp } from "@/components/profile/InstallApp";
 import { YourData } from "@/components/profile/YourData";
 import { useAuth } from "@/lib/auth";
 
@@ -109,6 +110,7 @@ function Profile() {
       </section>
       {me.phone_verified && <PhoneChange me={me} onChanged={() => void reload()} />}
 
+      <InstallApp />
       <Devices />
       <YourData />
       <Link href="/disputes" className={`${btnGhost} block text-center`}>My disputes</Link>
