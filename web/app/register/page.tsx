@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { btnCls, ErrorText, Field } from "@/components/ui-bits";
+import { Logo } from "@/components/Logo";
 import { useAuth } from "@/lib/auth";
 
 export default function Register() {
@@ -29,6 +30,7 @@ export default function Register() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      <div className="flex justify-center"><Logo size={72} /></div>
       <h1 className="text-xl font-semibold">Create account</h1>
       <Field label="Name" required value={f.name} onChange={set("name")} />
       <Field label="Email" type="email" required value={f.email} onChange={set("email")} />

@@ -35,7 +35,18 @@ test("the app can be installed, works offline, and tells you about the browser p
     const r = await page.request.get(icon.src);
     expect(r.status()).toBe(200);
     expect(r.headers()["content-type"]).toContain("image/png");
+    const png = await r.body(); // the picture really is the size the manifest promises
+    expect(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`).toBe(icon.sizes);
   }
+  // iPhone: the home-screen icon is a 180 x 180 picture linked from every page, and the page can run as an app
+  const html = await (await page.request.get("/")).text();
+  const touch = html.match(/<link rel="apple-touch-icon" href="([^"]+)"/)?.[1];
+  expect(touch, "apple-touch-icon link").toBeTruthy();
+  const tp = await (await page.request.get(touch!)).body();
+  expect(`${tp.readUInt32BE(16)}x${tp.readUInt32BE(20)}`).toBe("180x180");
+  expect(html).toMatch(/<meta name="mobile-web-app-capable" content="yes"/);
+  expect(html).toMatch(/<meta name="apple-mobile-web-app-title" content="FFCL"/);
+  expect(manifest.theme_color).toBe("#0f3d2e");
   const sw = await page.request.get("/sw.js");
   expect(sw.headers()["content-type"]).toMatch(/javascript/);
 

@@ -6,6 +6,7 @@ import { Chrome } from "@/components/Chrome";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { AuthProvider } from "@/lib/auth";
+import { LOGO } from "@/lib/logo";
 import { NotificationsProvider } from "@/lib/notifications";
 
 const geistSans = Geist({
@@ -13,7 +14,7 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-export const viewport: Viewport = { themeColor: "#111111", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: LOGO.brand, width: "device-width", initialScale: 1 };
 
 export const metadata: Metadata = {
   applicationName: "FFCL",

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { LOGO } from "@/lib/logo";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -9,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#ffffff",
-    theme_color: "#111111",
+    background_color: LOGO.brand,
+    theme_color: LOGO.brand,
     categories: ["sports"],
     icons: [
       { src: "/icons/192", sizes: "192x192", type: "image/png", purpose: "any" },

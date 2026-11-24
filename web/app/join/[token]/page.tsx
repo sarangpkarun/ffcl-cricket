@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Logo } from "@/components/Logo";
 import { btnCls, ErrorText, Field } from "@/components/ui-bits";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -30,6 +31,7 @@ export default function Join() {
       try { await acceptInvite(token, email, password); router.replace("/profile"); } catch (x) { setErr((x as Error).message); }
       setBusy(false);
     }}>
+      <div className="flex justify-center"><Logo size={72} /></div>
       <h1 className="text-xl font-semibold">Welcome, {inv.name}</h1>
       <p className="text-sm">You have been added to <b>{inv.team}</b>{inv.season ? ` for ${inv.season}` : ""}. Your number ending {inv.phone_ending} is already verified. Choose an email and a password to finish.</p>
       <Field label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />

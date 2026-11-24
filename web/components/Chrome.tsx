@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
+import { Logo } from "@/components/Logo";
 import { BottomNav } from "@/components/BottomNav";
 import { TopBar } from "@/components/TopBar";
 import { useAuth } from "@/lib/auth";
@@ -12,7 +13,7 @@ function PublicHeader() {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-4">
-        <Link href="/" prefetch={false} className="font-semibold">FFCL</Link>
+        <Link href="/" prefetch={false} className="flex items-center gap-2 font-semibold"><Logo size={28} />FFCL</Link>
         <nav aria-label="Site" className="flex items-center gap-4 text-sm">
           <Link href="/league" prefetch={false}>Seasons</Link>
           <Link href="/league/history" prefetch={false}>History</Link>

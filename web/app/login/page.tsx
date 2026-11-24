@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { btnCls, ErrorText, Field } from "@/components/ui-bits";
+import { Logo } from "@/components/Logo";
 import { useAuth } from "@/lib/auth";
 
 export default function Login() {
@@ -29,6 +30,7 @@ export default function Login() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      <div className="flex justify-center"><Logo size={72} /></div>
       <h1 className="text-xl font-semibold">Sign in</h1>
       <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Field label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
