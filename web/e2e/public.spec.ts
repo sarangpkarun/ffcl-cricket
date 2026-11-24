@@ -94,8 +94,9 @@ test("a signed-out visitor follows the league: pages, privacy, live match, hidin
 
   // --- a signed-in user at "/" still gets their dashboard
   const me = await loginPage(browser, B.players[1], "/");
-  await expect(me.getByText("Live matches will appear here.")).toBeVisible({ timeout: 15_000 });
-  await expect(me.getByRole("navigation").getByText("Fixtures")).toBeVisible();
+  await expect(me.getByRole("heading", { name: "Live now" })).toBeVisible({ timeout: 15_000 });
+  await expect(me.getByText("FFCL Season 24")).toHaveCount(0); // never a made-up match
+  await expect(me.getByRole("link", { name: "Fixtures", exact: true })).toBeVisible();
 
   // --- an admin hides the season; the public can no longer see it
   const ad = await loginPage(browser, lg.adminUser, `/admin/seasons/${lg.season}/setup`);
