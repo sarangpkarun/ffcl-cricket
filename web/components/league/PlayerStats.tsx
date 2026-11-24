@@ -51,9 +51,9 @@ export function MatchHistory({ history, matchHref, prefetch = true }: { history:
       <ul className="space-y-2">
         {history.map((h) => (
           <li key={h.match_id}>
-            <Link href={matchHref(h.match_id)} prefetch={prefetch} className="block rounded-lg border p-3 text-sm">
+            <Link href={matchHref(h.match_id)} prefetch={prefetch} className="block card-elevated rounded-2xl border bg-card p-3 text-sm">
               <span className="font-medium">{h.round_label ?? `Match ${h.match_no}`}</span> vs {h.against}
-              {h.won !== null && <span className={h.won ? " text-green-700" : " text-red-700"}> · {h.won ? "Won" : "Lost"}</span>}
+              {h.won !== null && <span className={h.won ? " text-success" : " text-destructive"}> · {h.won ? "Won" : "Lost"}</span>}
               {h.potm && " ⭐"}
               <span className="block text-xs text-muted-foreground">
                 {h.batted ? `${h.runs} off ${h.balls}${h.out ? "" : "*"}` : "did not bat"}{h.bowled ? ` · ${h.wickets}/${h.runs_conceded} (${h.bowl_balls} balls)` : ""}

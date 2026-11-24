@@ -9,7 +9,7 @@ async function Header({ params }: { params: Promise<{ slug: string }> }) {
   if (!ov) notFound();
   return (
     <header className="space-y-2">
-      <h1 className="text-xl font-semibold">{ov.season.name}</h1>
+      <h1 className="text-2xl font-bold text-primary">{ov.season.name}</h1>
       <SeasonTabs slug={slug} seasons={(all ?? []).map((s) => ({ slug: s.slug, name: s.name }))} />
     </header>
   );

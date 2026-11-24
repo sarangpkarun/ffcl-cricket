@@ -66,9 +66,9 @@ function Rules() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Rule versions</h1>
+      <h1 className="text-2xl font-bold text-primary">Rule versions</h1>
       <ErrorText msg={err} />
-      {ok && <p role="status" className="text-sm text-green-700">{ok}</p>}
+      {ok && <p role="status" className="text-sm text-success">{ok}</p>}
       <select aria-label="Version" className={inputCls} value={sel ?? ""} onChange={(e) => setSel(Number(e.target.value))}>
         {list.map((v) => <option key={v.id} value={v.id}>{v.name} v{v.version} · {v.seasons.map((s) => s.name).join(", ") || "not in use"} · {v.matches} matches</option>)}
       </select>
@@ -81,7 +81,7 @@ function Rules() {
             <ul>{d.changes.map((c) => <li key={c.path}><code>{c.path}</code>: {String(c.from)} → <b>{String(c.to)}</b></li>)}</ul>
           </section>
 
-          <section aria-label="New version" className="space-y-2 rounded-lg border p-3">
+          <section aria-label="New version" className="space-y-2 card-elevated rounded-2xl border bg-card p-3">
             <h2 className="font-medium">New version from v{d.version}</h2>
             <div className="grid grid-cols-2 gap-2">
               {FIELDS.map((f) => (
@@ -95,7 +95,7 @@ function Rules() {
             </button>
           </section>
 
-          <section aria-label="Apply to a season" className="space-y-2 rounded-lg border p-3">
+          <section aria-label="Apply to a season" className="space-y-2 card-elevated rounded-2xl border bg-card p-3">
             <h2 className="font-medium">Use v{d.version} for a season</h2>
             <p className="text-xs text-muted-foreground">The table and matches that have not started switch over. Matches already under way or finished keep the version they started under.</p>
             <select aria-label="Season" className={inputCls} value={seasonId} onChange={(e) => setSeasonId(e.target.value)}>

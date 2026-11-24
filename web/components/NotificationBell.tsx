@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Bell } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useNotifications } from "@/lib/notifications";
 
@@ -10,10 +11,10 @@ export function NotificationBell() {
   const { unread, connected } = useNotifications();
   if (!me) return null;
   return (
-    <Link href="/notifications" data-live={connected ? "true" : "false"} aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="relative px-2 text-xl">
-      🔔
+    <Link href="/notifications" data-live={connected ? "true" : "false"} aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} className="relative flex h-10 w-10 items-center justify-center rounded-full text-white hover:bg-white/10">
+      <Bell size={22} aria-hidden />
       {unread > 0 && (
-        <span data-testid="unread-badge" className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-[11px] leading-5 text-white">
+        <span data-testid="unread-badge" className="absolute right-0 top-0 min-w-5 rounded-full bg-destructive px-1 text-center text-[11px] leading-5 text-white">
           {unread > 99 ? "99+" : unread}
         </span>
       )}
@@ -27,7 +28,7 @@ export function NotificationToast() {
   const router = useRouter();
   if (!toast) return null;
   return (
-    <div role="status" className="fixed inset-x-3 top-14 z-30 mx-auto max-w-md rounded-lg border bg-background p-3 shadow-lg">
+    <div role="status" className="fixed inset-x-3 top-14 z-30 mx-auto max-w-md rounded-xl border bg-card p-3 text-foreground shadow-lg">
       <div className="flex items-start gap-2">
         <button
           type="button"

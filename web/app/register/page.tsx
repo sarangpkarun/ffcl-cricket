@@ -31,7 +31,7 @@ export default function Register() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="flex justify-center"><Logo size={72} /></div>
-      <h1 className="text-xl font-semibold">Create account</h1>
+      <h1 className="text-2xl font-bold text-primary">Create account</h1>
       <Field label="Name" required value={f.name} onChange={set("name")} />
       <Field label="Email" type="email" required value={f.email} onChange={set("email")} />
       <Field label="Password (min 8)" type="password" minLength={8} required value={f.password} onChange={set("password")} />

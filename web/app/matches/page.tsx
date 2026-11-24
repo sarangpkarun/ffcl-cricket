@@ -25,12 +25,12 @@ function Matches() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Matches</h1>
+      <h1 className="text-2xl font-bold text-primary">Matches</h1>
       {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
       <ul className="space-y-2">
         {rows.map(({ m, names }) => (
           <li key={m.id}>
-            <Link href={`/matches/${m.id}`} className="block rounded-lg border p-3">
+            <Link href={`/matches/${m.id}`} className="card-elevated block rounded-2xl border bg-card p-4">
               <p className="font-medium">Match {m.match_no}: {names[m.team_a_id]} vs {names[m.team_b_id]}</p>
               <p className="text-sm text-muted-foreground">
                 {m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : "Time TBD"} · {m.status}

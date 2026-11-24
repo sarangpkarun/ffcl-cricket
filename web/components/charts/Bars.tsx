@@ -39,7 +39,7 @@ export function Bars({ labels, series, marks, title, unit = "runs" }: { labels: 
       </svg>
       <figcaption className="flex flex-wrap gap-3 text-xs">
         {series.map((s) => <span key={s.label} className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded" style={{ background: s.color }} />{s.label} ({unit})</span>)}
-        {marks?.some(Boolean) && <span><b className="text-amber-700">PP</b> powerplay over</span>}
+        {marks?.some(Boolean) && <span><b className="text-warning">PP</b> powerplay over</span>}
       </figcaption>
       <table className="sr-only">
         <caption>{title}</caption>
@@ -58,7 +58,7 @@ export function Share({ rows, title }: { rows: { label: string; value: number; n
       {rows.map((r) => (
         <li key={r.label} className="flex items-center gap-2">
           <span className="w-4 text-right tabular-nums">{r.label}</span>
-          <span className="relative h-4 flex-1 rounded bg-muted" aria-hidden><span className="absolute inset-y-0 left-0 rounded bg-foreground/70" style={{ width: `${(100 * r.value) / max}%` }} /></span>
+          <span className="relative h-4 flex-1 rounded bg-muted" aria-hidden><span className="absolute inset-y-0 left-0 rounded bg-primary" style={{ width: `${(100 * r.value) / max}%` }} /></span>
           <span className="w-24 text-xs tabular-nums text-muted-foreground">{r.value}%{r.note ? ` · ${r.note}` : ""}</span>
         </li>
       ))}

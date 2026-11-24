@@ -19,7 +19,7 @@ function Countdown({ to }: { to: string | null }) {
     return () => clearInterval(t);
   }, [to]);
   if (left === null) return null;
-  return <span className={left < 30 ? "text-red-600" : ""}>⏱ {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}</span>;
+  return <span className={left < 30 ? "text-destructive" : ""}>⏱ {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}</span>;
 }
 
 export function PlayerPanel({ matchId, over, battingTeam, onDone }: { matchId: number; over: OverView; battingTeam: string; onDone: () => void }) {

@@ -3,9 +3,9 @@ import { NotificationBell, NotificationToast } from "@/components/NotificationBe
 
 export function TopBar() {
   return (
-    <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-12 max-w-md items-center justify-between px-4 font-semibold">
-        <span className="flex items-center gap-2"><Logo size={28} />FFCL</span>
+    <header className="hero-gradient sticky top-0 z-10 pt-[env(safe-area-inset-top)] shadow-md">
+      <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
+        <span className="flex items-center gap-2 text-lg font-bold tracking-wide"><Logo size={32} />FFCL</span>
         <NotificationBell />
       </div>
       <NotificationToast />

@@ -9,7 +9,7 @@ export const overLabel = (t: string) => OVER_LABEL[t] ?? t;
 
 function Ball({ b }: { b: { runs: number; wicket: boolean } }) {
   return (
-    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs ${b.wicket ? "bg-red-600 text-white" : ""}`}>
+    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs ${b.wicket ? "bg-destructive text-white" : ""}`}>
       {b.wicket ? "W" : b.runs}
     </span>
   );
@@ -19,7 +19,7 @@ function Innings({ inn, live }: { inn: InningsCard; live: Live }) {
   const name = live.match.teams[String(inn.batting_team_id)];
   const chasing = inn.target !== null && inn.status !== "pending";
   return (
-    <section className="space-y-3 rounded-lg border p-4">
+    <section className="space-y-3 card-elevated rounded-2xl border bg-card p-4">
       <div>
         <p className="text-xs text-muted-foreground">Innings {inn.number} · {inn.status}</p>
         <p className="text-sm font-medium">{name} batting</p>

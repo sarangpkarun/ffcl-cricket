@@ -31,7 +31,7 @@ export default function Login() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="flex justify-center"><Logo size={72} /></div>
-      <h1 className="text-xl font-semibold">Sign in</h1>
+      <h1 className="text-2xl font-bold text-primary">Sign in</h1>
       <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       <Field label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       <ErrorText msg={err} />

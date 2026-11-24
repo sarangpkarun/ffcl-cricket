@@ -19,22 +19,22 @@ function Admin() {
 
   return (
     <div className="space-y-5">
-      {isGlobalAdmin && <Link href="/admin/users" className="block rounded-lg border p-3 text-center text-sm">👥 People (roles, suspend)</Link>}
-      {isGlobalAdmin && <Link href="/admin/moderation" className="block rounded-lg border p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>}
-      <Link href="/admin/import" className="block rounded-lg border p-3 text-center text-sm">📥 Add players (import a list, invite links, verify numbers)</Link>
-      <Link href="/admin/disputes" className="block rounded-lg border p-3 text-center text-sm">⚖️ Disputes{disputes && disputes.open + disputes.in_review > 0 && <span className="ml-2 rounded-full bg-red-600 px-2 text-xs text-white" aria-label={`${disputes.open + disputes.in_review} waiting`}>{disputes.open + disputes.in_review}</span>}</Link>
-      <Link href="/admin/approvals" className="block rounded-lg border p-3 text-center text-sm">✅ Approvals (roster changes, phone numbers)</Link>
-      {isGlobalAdmin && <Link href="/admin/rules" className="block rounded-lg border p-3 text-center text-sm">📏 Rule versions</Link>}
-      {isGlobalAdmin && <Link href="/admin/audit" className="block rounded-lg border p-3 text-center text-sm">🧾 Audit log</Link>}
-      <Link href="/history" className="block rounded-lg border p-3 text-center text-sm">🏆 Season history</Link>
-      <Link href="/admin/adjustments" className="block rounded-lg border p-3 text-center text-sm">⚖️ Points adjustments</Link>
-      <Link href="/admin/duties" className="block rounded-lg border p-3 text-center text-sm">🧑‍⚖️ Umpire duties</Link>
-      <h1 className="text-xl font-semibold">Seasons</h1>
+      {isGlobalAdmin && <Link href="/admin/users" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">👥 People (roles, suspend)</Link>}
+      {isGlobalAdmin && <Link href="/admin/moderation" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">🛡️ Chat moderation (reports, mutes, announcements)</Link>}
+      <Link href="/admin/import" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">📥 Add players (import a list, invite links, verify numbers)</Link>
+      <Link href="/admin/disputes" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">⚖️ Disputes{disputes && disputes.open + disputes.in_review > 0 && <span className="ml-2 rounded-full bg-destructive px-2 text-xs text-white" aria-label={`${disputes.open + disputes.in_review} waiting`}>{disputes.open + disputes.in_review}</span>}</Link>
+      <Link href="/admin/approvals" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">✅ Approvals (roster changes, phone numbers)</Link>
+      {isGlobalAdmin && <Link href="/admin/rules" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">📏 Rule versions</Link>}
+      {isGlobalAdmin && <Link href="/admin/audit" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">🧾 Audit log</Link>}
+      <Link href="/history" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">🏆 Season history</Link>
+      <Link href="/admin/adjustments" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">⚖️ Points adjustments</Link>
+      <Link href="/admin/duties" className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">🧑‍⚖️ Umpire duties</Link>
+      <h1 className="text-2xl font-bold text-primary">Seasons</h1>
       {seasons.length === 0 && <p className="text-sm text-muted-foreground">No seasons to manage yet.</p>}
       <ul className="space-y-2">
         {seasons.map((s) => (
           <li key={s.id}>
-            <Link href={`/admin/seasons/${s.id}`} className="flex justify-between rounded-lg border p-3">
+            <Link href={`/admin/seasons/${s.id}`} className="flex justify-between card-elevated rounded-2xl border bg-card p-3">
               <span>{s.name}</span>
               <span className="text-sm text-muted-foreground">{s.status}</span>
             </Link>

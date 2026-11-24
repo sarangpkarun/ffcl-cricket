@@ -10,7 +10,7 @@ export function Tie({ m, href, prefetch = true }: { m: BracketMatch; href: strin
     </span>
   );
   return (
-    <Link href={href} prefetch={prefetch} className="block rounded-lg border p-3" aria-label={`${m.round_label}: ${m.team_a.name} vs ${m.team_b.name}`}>
+    <Link href={href} prefetch={prefetch} className="block card-elevated rounded-2xl border bg-card p-3" aria-label={`${m.round_label}: ${m.team_a.name} vs ${m.team_b.name}`}>
       <p className="text-xs text-muted-foreground">{m.round_label} · #{m.match_no} · {m.status === "completed" ? "Final result" : <LocalTime iso={m.scheduled_at} />}</p>
       <p className="font-medium">{side(m.team_a)} <span className="text-muted-foreground">vs</span> {side(m.team_b)}</p>
       {m.result && <p className="text-sm">🏆 {m.result}</p>}

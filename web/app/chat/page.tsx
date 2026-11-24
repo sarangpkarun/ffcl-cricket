@@ -17,7 +17,7 @@ function Chat() {
       .catch((e) => setErr(e.message));
   }, []);
 
-  if (err) return <p role="alert" className="text-sm text-red-600">{err}</p>;
+  if (err) return <p role="alert" className="text-sm text-destructive">{err}</p>;
   if (!rooms) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (rooms.length === 0)
     return <p className="text-sm text-muted-foreground">You are not part of a season yet. Once a captain or admin adds you to a team, the league chat appears here.</p>;

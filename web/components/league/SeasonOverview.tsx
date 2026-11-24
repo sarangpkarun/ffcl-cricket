@@ -9,7 +9,7 @@ export async function SeasonOverview({ slug }: { slug: string }) {
   const top = ov.table.slice(0, Math.max(ov.qualifiers, 4));
   return (
     <div className="space-y-5">
-      {ov.champion && <p role="status" className="rounded-lg bg-foreground px-4 py-3 text-center font-medium text-background">🏆 {ov.champion.name} are champions</p>}
+      {ov.champion && <p role="status" className="hero-gradient card-elevated rounded-2xl px-4 py-4 text-center text-lg font-bold">🏆 {ov.champion.name} are champions</p>}
       {ov.live.length > 0 && <Section title="Live now" label="Live now"><FixtureList items={ov.live} slug={slug} empty="" /></Section>}
       <Section title="Next matches"><FixtureList items={ov.next} slug={slug} empty="No upcoming matches yet." /></Section>
       <Section title="Latest results"><FixtureList items={ov.latest} slug={slug} empty="No results yet." /></Section>
@@ -30,7 +30,7 @@ export async function SeasonOverview({ slug }: { slug: string }) {
         <Section title="Leaders" label="Leaders">
           <div className="grid gap-3 sm:grid-cols-2">
             {([["Most runs", ov.leaders.most_runs], ["Most wickets", ov.leaders.most_wickets]] as const).map(([title, rows]) => (
-              <div key={title} className="rounded-lg border p-3 text-sm">
+              <div key={title} className="card-elevated rounded-2xl border bg-card p-3 text-sm">
                 <p className="mb-1 text-xs text-muted-foreground">{title}</p>
                 <ol className="space-y-1">
                   {rows.map((r) => (

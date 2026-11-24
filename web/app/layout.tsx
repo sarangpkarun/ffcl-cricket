@@ -18,7 +18,7 @@ export const viewport: Viewport = { themeColor: LOGO.brand, width: "device-width
 
 export const metadata: Metadata = {
   applicationName: "FFCL",
-  appleWebApp: { capable: true, title: "FFCL", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "FFCL", statusBarStyle: "black-translucent" },
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3100"),
   title: { default: "FFCL digit cricket league", template: "%s · FFCL" },
   description: "Live scores, points table, fixtures and stats for the FFCL digit cricket league.",

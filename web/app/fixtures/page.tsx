@@ -6,6 +6,7 @@ import { chooseSeason, rememberSeason } from "@/lib/seasons";
 import { api, type Fixture, type Season, type Team } from "@/lib/api";
 import { FixtureCard as Card } from "@/components/FixtureCard";
 import { useAuth } from "@/lib/auth";
+import { ListSkeleton } from "@/components/Skeleton";
 
 type Tab = "upcoming" | "live" | "completed";
 const TABS: { key: Tab; label: string }[] = [
@@ -51,16 +52,16 @@ function Fixtures() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Fixtures</h1>
+      <h1 className="text-2xl font-bold text-primary">Fixtures</h1>
       {seasons.length > 1 && (
         <select aria-label="Season" className={inputCls} value={seasonId ?? ""} onChange={(e) => { rememberSeason(e.target.value); setSeasonId(Number(e.target.value)); }}>
           {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       )}
-      <div role="tablist" className="flex rounded-lg border p-1">
+      <div role="tablist" className="flex rounded-2xl border bg-muted p-1">
         {TABS.map((t) => (
           <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 rounded-md py-2 text-sm ${tab === t.key ? "bg-foreground text-background" : ""}`}>{t.label}</button>
+            className={`flex-1 rounded-xl py-2 text-sm font-medium transition ${tab === t.key ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"}`}>{t.label}</button>
         ))}
       </div>
       <div className="flex items-center gap-3">
@@ -75,6 +76,7 @@ function Fixtures() {
         )}
       </div>
       <ErrorText msg={err} />
+      {rows === null && !err && <ListSkeleton rows={2} />}
       {rows && rows.length === 0 && (
         <p className="text-sm text-muted-foreground">
           {tab === "upcoming" ? "No upcoming matches yet. Fixtures appear here once the organisers publish them." : tab === "live" ? "No match is being played right now." : "No completed matches yet."}

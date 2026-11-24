@@ -36,8 +36,8 @@ function SeasonPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">{season?.name ?? "Season"}</h1>
-      <Link href={`/admin/seasons/${id}/setup`} className="block rounded-lg border p-3 text-center text-sm">📅 Generate and publish fixtures</Link>
+      <h1 className="text-2xl font-bold text-primary">{season?.name ?? "Season"}</h1>
+      <Link href={`/admin/seasons/${id}/setup`} className="block card-elevated rounded-2xl border bg-card p-3 text-center text-sm">📅 Generate and publish fixtures</Link>
       <ErrorText msg={err} />
 
       <section className="space-y-2">
@@ -45,7 +45,7 @@ function SeasonPage() {
         <ul className="space-y-2">
           {teams.map((t) => (
             <li key={t.id}>
-              <Link href={`/teams/${t.id}`} className="flex items-center gap-2 rounded-lg border p-3">
+              <Link href={`/teams/${t.id}`} className="flex items-center gap-2 card-elevated rounded-2xl border bg-card p-3">
                 <span className="h-4 w-4 rounded-full" style={{ background: t.color ?? "#999" }} />
                 {t.name}
               </Link>
@@ -64,7 +64,7 @@ function SeasonPage() {
         <ul className="space-y-2">
           {matches.map((m) => (
             <li key={m.id}>
-              <Link href={`/matches/${m.id}`} className="block rounded-lg border p-3 text-sm">
+              <Link href={`/matches/${m.id}`} className="block card-elevated rounded-2xl border bg-card p-3 text-sm">
                 Match {m.match_no}: {tname(m.team_a_id)} vs {tname(m.team_b_id)} · {m.status}
               </Link>
             </li>

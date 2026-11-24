@@ -22,7 +22,7 @@ export function DisputePanel({ matchId }: { matchId: number }) {
   if (!info || (!info.can_raise && info.disputes.length === 0 && !info.role)) return null;
 
   return (
-    <section aria-label="Disputes" className="space-y-2 rounded-lg border p-3">
+    <section aria-label="Disputes" className="space-y-2 card-elevated rounded-2xl border bg-card p-3">
       <h2 className="font-medium">Disputes</h2>
       {info.disputes.length > 0 && (
         <ul className="space-y-1 text-sm">

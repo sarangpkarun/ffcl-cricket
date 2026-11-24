@@ -50,7 +50,7 @@ function DraftRow({ f, umpires, onChange }: { f: Fixture; umpires: Umpire[]; onC
     } catch (e) { setErr((e as Error).message); }
   };
   return (
-    <li className="space-y-2 rounded-lg border p-3" aria-label={`Draft match ${f.match_no}`}>
+    <li className="space-y-2 card-elevated rounded-2xl border bg-card p-3" aria-label={`Draft match ${f.match_no}`}>
       <p className="text-sm font-medium">{f.round_label} · {f.team_a.name} vs {f.team_b.name}</p>
       <div className="flex flex-wrap gap-2">
         <input type="datetime-local" aria-label={`Time for match ${f.match_no}`} className="rounded border bg-background px-2 py-2 text-sm" value={when} onChange={(e) => setWhen(e.target.value)} />
@@ -80,7 +80,7 @@ function SeasonAdmin({ id }: { id: string }) {
     try { await fn(); setSeason(await api<Season>(`/seasons/${id}`)); setConfirm(false); } catch (e) { setErr((e as Error).message); }
   };
   return (
-    <section aria-label="Season archive and exports" className="space-y-3 rounded-lg border p-4">
+    <section aria-label="Season archive and exports" className="space-y-3 card-elevated rounded-2xl border bg-card p-4">
       <h2 className="font-medium">Archive and exports</h2>
       {season?.slug && (
         <div className="space-y-1 rounded-md bg-muted p-3 text-sm">
@@ -161,13 +161,13 @@ function Setup() {
     <div className="space-y-6">
       <div>
         <Link href={`/seasons/${id}`} className="text-xs underline">← {season?.name ?? "Season"}</Link>
-        <h1 className="text-xl font-semibold">Fixtures setup</h1>
+        <h1 className="text-2xl font-bold text-primary">Fixtures setup</h1>
         <p className="text-sm text-muted-foreground">{teams.length} teams. Build the schedule, check it, then publish.</p>
       </div>
       <ErrorText msg={err} />
-      {teams.length < 2 && <p role="alert" className="text-sm text-red-600">Add at least two teams to the season first.</p>}
+      {teams.length < 2 && <p role="alert" className="text-sm text-destructive">Add at least two teams to the season first.</p>}
 
-      <section className="space-y-3 rounded-lg border p-3">
+      <section className="space-y-3 card-elevated rounded-2xl border bg-card p-3">
         <h2 className="font-medium">1. Format</h2>
         <Field label="Stage name" value={form.stage_name} onChange={(e) => setForm({ ...form, stage_name: e.target.value })} />
         <label className="block space-y-1 text-sm"><span>Meetings</span>
@@ -203,17 +203,17 @@ function Setup() {
       </section>
 
       {preview && (
-        <section className="space-y-3 rounded-lg border p-3" aria-label="Preview">
+        <section className="space-y-3 card-elevated rounded-2xl border bg-card p-3" aria-label="Preview">
           <h2 className="font-medium">2. Preview</h2>
           <p className="text-sm" role="status">{preview.summary.matches} matches · {preview.summary.rounds} rounds · {preview.summary.teams} teams</p>
-          {preview.summary.without_umpire ? <p className="text-sm text-amber-700">{preview.summary.without_umpire} match(es) have no umpire yet.</p> : null}
-          {preview.summary.with_warnings ? <p className="text-sm text-amber-700">{preview.summary.with_warnings} match(es) have warnings.</p> : null}
+          {preview.summary.without_umpire ? <p className="text-sm text-warning">{preview.summary.without_umpire} match(es) have no umpire yet.</p> : null}
+          {preview.summary.with_warnings ? <p className="text-sm text-warning">{preview.summary.with_warnings} match(es) have warnings.</p> : null}
           <ul className="max-h-72 space-y-1 overflow-y-auto text-sm">
             {preview.matches.map((m) => (
               <li key={m.index} className="rounded border px-2 py-1">
                 <b>R{m.round_no}</b> {m.team_a} v {m.team_b}<br />
                 <span className="text-xs text-muted-foreground">{show(m.scheduled_at)}{m.umpire ? ` · ${m.umpire}` : ""}</span>
-                {m.warnings.map((w) => <span key={w} className="block text-xs text-amber-700">⚠ {w}</span>)}
+                {m.warnings.map((w) => <span key={w} className="block text-xs text-warning">⚠ {w}</span>)}
               </li>
             ))}
           </ul>
@@ -227,7 +227,7 @@ function Setup() {
         </section>
       )}
 
-      {created !== null && <p role="status" className="text-sm text-green-700">Created {created} draft fixtures. Nobody can see them yet.</p>}
+      {created !== null && <p role="status" className="text-sm text-success">Created {created} draft fixtures. Nobody can see them yet.</p>}
 
       <section className="space-y-3">
         <h2 className="font-medium">3. Review drafts ({drafts.length})</h2>
@@ -250,7 +250,7 @@ function Setup() {
         </section>
       )}
       {standings && standings.matches_counted > 0 && (
-        <section className="space-y-3 rounded-lg border p-3" aria-label="Knockouts setup">
+        <section className="space-y-3 card-elevated rounded-2xl border bg-card p-3" aria-label="Knockouts setup">
           <h2 className="font-medium">5. Knockouts</h2>
           {bracket?.stage ? (
             <p role="status" className="text-sm">Knockouts are set: {bracket.matches.map((m) => `${m.round_label} ${m.team_a.name} v ${m.team_b.name}`).join(" · ")}. The final is created automatically when the semi-finals finish. <Link href="/standings" className="underline">See the bracket</Link></p>

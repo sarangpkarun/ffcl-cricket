@@ -25,7 +25,7 @@ function Player() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-xl font-semibold">{d.player.name}</h1>
+        <h1 className="text-2xl font-bold text-primary">{d.player.name}</h1>
         <p className="text-sm text-muted-foreground">{d.player.player_code}</p>
       </header>
       <select aria-label="Scope" className={inputCls} value={scope} onChange={(e) => setScope(e.target.value)}>

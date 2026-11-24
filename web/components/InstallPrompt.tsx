@@ -45,14 +45,14 @@ export function InstallPrompt() {
   const how = kind && kind !== "other" && (kind !== "android" || late) ? HOW[kind] : null;
   if (!eligible || (!event && !how)) return null;
   return (
-    <aside aria-label="Install the app" className="fixed inset-x-3 bottom-20 z-20 mx-auto flex max-w-md items-center gap-3 rounded-lg border bg-background p-3 text-sm shadow-lg">
+    <aside aria-label="Install the app" className="fixed inset-x-3 bottom-20 z-20 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-primary/20 bg-card p-3 text-sm shadow-xl">
       <p className="flex-1">{event ? "Install FFCL on your phone for quick access and match alerts." : `To install FFCL: ${how}`}</p>
       {event && (
-        <button className="rounded-md bg-foreground px-3 py-2 text-background" onClick={async () => { await event.prompt(); await event.userChoice; dismiss(); }}>
+        <button className="rounded-xl bg-primary px-3 py-2 font-medium text-primary-foreground" onClick={async () => { await event.prompt(); await event.userChoice; dismiss(); }}>
           Install
         </button>
       )}
-      <button className="rounded-md border px-3 py-2" onClick={dismiss} aria-label="Not now">Not now</button>
+      <button className="rounded-xl border px-3 py-2" onClick={dismiss} aria-label="Not now">Not now</button>
     </aside>
   );
 }

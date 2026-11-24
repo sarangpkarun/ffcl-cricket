@@ -34,9 +34,9 @@ function Approvals() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Approvals</h1>
+      <h1 className="text-2xl font-bold text-primary">Approvals</h1>
       <ErrorText msg={err} />
-      {ok && <p role="status" className="text-sm text-green-700">{ok}</p>}
+      {ok && <p role="status" className="text-sm text-success">{ok}</p>}
 
       <section aria-label="Roster changes" className="space-y-2">
         <h2 className="font-medium">Roster changes ({roster.length})</h2>
@@ -44,7 +44,7 @@ function Approvals() {
         {roster.map((r) => {
           const key = `r${r.id}`;
           return (
-            <article key={r.id} className="space-y-2 rounded-lg border p-3 text-sm">
+            <article key={r.id} className="space-y-2 card-elevated rounded-2xl border bg-card p-3 text-sm">
               <p><b>{r.team.name}</b>: {r.out?.name} <span className="text-muted-foreground">out</span>, {r.in?.name} <span className="text-muted-foreground">in</span></p>
               <p className="text-xs text-muted-foreground">Asked by {r.requested_by?.name}: {r.reason}</p>
               <div className="flex gap-2">
@@ -63,7 +63,7 @@ function Approvals() {
         {phones.map((p) => {
           const key = `p${p.id}`;
           return (
-            <article key={p.id} className="space-y-2 rounded-lg border p-3 text-sm">
+            <article key={p.id} className="space-y-2 card-elevated rounded-2xl border bg-card p-3 text-sm">
               <p><b>{p.user.name}</b> <span className="text-muted-foreground">{p.user.player_code}</span>: {p.current_phone} → <b>{p.new_phone}</b></p>
               <p className="text-xs text-muted-foreground">{p.reason}</p>
               <div className="flex gap-2">

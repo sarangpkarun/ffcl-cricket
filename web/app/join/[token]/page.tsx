@@ -32,7 +32,7 @@ export default function Join() {
       setBusy(false);
     }}>
       <div className="flex justify-center"><Logo size={72} /></div>
-      <h1 className="text-xl font-semibold">Welcome, {inv.name}</h1>
+      <h1 className="text-2xl font-bold text-primary">Welcome, {inv.name}</h1>
       <p className="text-sm">You have been added to <b>{inv.team}</b>{inv.season ? ` for ${inv.season}` : ""}. Your number ending {inv.phone_ending} is already verified. Choose an email and a password to finish.</p>
       <Field label="Email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <Field label="Password (min 8)" type="password" minLength={8} required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />

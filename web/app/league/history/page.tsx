@@ -15,7 +15,7 @@ async function Content() {
   return (
     <>
       {rows.map((s) => (
-        <section key={s.season.id} aria-label={s.season.name} className="space-y-2 rounded-lg border p-3 text-sm">
+        <section key={s.season.id} aria-label={s.season.name} className="space-y-2 card-elevated rounded-2xl border bg-card p-3 text-sm">
           <h2 className="font-medium"><Link prefetch={false} href={`/league/${s.season.slug}`} className="underline">{s.season.name}</Link> <span className="text-xs text-muted-foreground">{s.teams} teams · {s.matches} matches</span></h2>
           {s.champion && <p className="font-medium">🏆 Champions: {s.champion.name}</p>}
           <ol className="divide-y rounded border">
@@ -35,7 +35,7 @@ async function Content() {
 export default function Page() {
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Season history</h1>
+      <h1 className="text-2xl font-bold text-primary">Season history</h1>
       <Suspense fallback={<Skeleton />}><Content /></Suspense>
     </div>
   );

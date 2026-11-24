@@ -13,7 +13,7 @@ export function Devices() {
   const load = useCallback(() => api<Row[]>("/me/sessions").then((r) => { setRows(r); setErr(null); }).catch((e) => setErr(e.message)), []);
   useEffect(() => { void load(); }, [load]);
   return (
-    <section aria-label="Where you are signed in" className="space-y-2 rounded-lg border p-4">
+    <section aria-label="Where you are signed in" className="space-y-2 card-elevated rounded-2xl border bg-card p-4">
       <h2 className="font-medium">Where you are signed in</h2>
       <ErrorText msg={err} />
       <ul className="space-y-2 text-sm">

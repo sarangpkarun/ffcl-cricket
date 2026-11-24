@@ -32,7 +32,7 @@ export function Worm({ series, balls }: { series: WormSeries[]; balls: number })
       </svg>
       <figcaption className="flex flex-wrap gap-3 text-xs">
         {series.map((s) => <span key={s.label} className="flex items-center gap-1"><span className="inline-block h-2 w-4 rounded" style={{ background: s.color }} />{s.label}</span>)}
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-red-600" />wicket</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-destructive" />wicket</span>
       </figcaption>
       <table className="sr-only">
         <caption>Runs after each over</caption>

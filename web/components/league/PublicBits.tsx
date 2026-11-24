@@ -16,10 +16,10 @@ export function statusText(f: Pick<PubFixture, "status" | "paused">) {
 export function FixtureCard({ f, slug }: { f: PubFixture; slug: string }) {
   const live = LIVE.includes(f.status);
   return (
-    <Link prefetch={false} href={`/league/${slug}/matches/${f.id}`} className={`block rounded-lg border p-3 ${live ? "border-foreground" : ""}`}>
+    <Link prefetch={false} href={`/league/${slug}/matches/${f.id}`} className={`block card-elevated rounded-2xl border bg-card p-3 ${live ? "border-foreground" : ""}`}>
       <p className="flex justify-between text-xs text-muted-foreground">
         <span>{f.round_label ?? `Match ${f.match_no}`}</span>
-        <span className={live ? "font-semibold text-red-600" : ""}>{statusText(f)}</span>
+        <span className={live ? "font-semibold text-destructive" : ""}>{statusText(f)}</span>
       </p>
       <p className="font-medium">{f.team_a.name} <span className="text-muted-foreground">vs</span> {f.team_b.name}</p>
       {f.result ? <p className="text-sm">🏆 {f.result}</p> : <p className="text-sm text-muted-foreground"><LocalTime iso={f.scheduled_at} /></p>}

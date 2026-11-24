@@ -29,7 +29,7 @@ function Audit() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Audit log</h1>
+      <h1 className="text-2xl font-bold text-primary">Audit log</h1>
       <form className="grid grid-cols-2 gap-2" onSubmit={(e) => { e.preventDefault(); void search(); }}>
         <select aria-label="Action" className={inputCls} value={f.action} onChange={(e) => setF({ ...f, action: e.target.value })}>
           <option value="">Any action</option>
@@ -47,7 +47,7 @@ function Audit() {
       <ul className="space-y-2">
         {rows.length === 0 && <li className="text-sm text-muted-foreground">No entries.</li>}
         {rows.map((e) => (
-          <li key={e.id} className="rounded-lg border p-3 text-sm">
+          <li key={e.id} className="card-elevated rounded-2xl border bg-card p-3 text-sm">
             <p><b>{e.action}</b> <span className="text-muted-foreground">{e.entity}{e.entity_id ? ` #${e.entity_id}` : ""}</span></p>
             <p className="text-xs text-muted-foreground">{new Date(e.at).toLocaleString()} · {e.actor?.name ?? "system"}{e.reason ? ` · ${e.reason}` : ""}</p>
             {Boolean(e.before || e.after) && <details className="text-xs"><summary className="cursor-pointer">Details</summary><pre className="overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify({ before: e.before, after: e.after }, null, 1)}</pre></details>}

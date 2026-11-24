@@ -4,7 +4,7 @@ import type { Standings } from "@/lib/api";
 export const TIEBREAK_LABEL: Record<string, string> = { points: "points", nrr: "net run rate", wins: "wins", head_to_head: "head-to-head", name: "name" };
 
 export function Form({ form }: { form: string[] }) {
-  const tone: Record<string, string> = { W: "bg-green-600 text-white", L: "bg-red-600 text-white", T: "bg-amber-500 text-white", N: "bg-muted text-foreground" };
+  const tone: Record<string, string> = { W: "bg-success text-white", L: "bg-destructive text-white", T: "bg-warning text-white", N: "bg-muted text-foreground" };
   return (
     <span className="flex gap-0.5" aria-label={`Form: ${form.join(" ")}`}>
       {form.map((f, i) => <span key={i} className={`inline-flex h-4 w-4 items-center justify-center rounded-sm text-[10px] ${tone[f] ?? ""}`}>{f}</span>)}
@@ -16,9 +16,9 @@ export function Form({ form }: { form: string[] }) {
 export function StandingsTable({ data, teamHref, prefetch = true }: { data: Standings; teamHref: (teamId: number) => string; prefetch?: boolean }) {
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="card-elevated overflow-x-auto rounded-2xl border bg-card">
         <table className="w-full text-sm" aria-label="Points table">
-          <thead className="text-left text-xs text-muted-foreground">
+          <thead className="bg-muted text-left text-xs text-muted-foreground">
             <tr>
               <th className="px-2 py-2">#</th><th className="py-2">Team</th>
               <th className="px-1 text-right">P</th><th className="px-1 text-right">W</th><th className="px-1 text-right">L</th>
@@ -28,7 +28,7 @@ export function StandingsTable({ data, teamHref, prefetch = true }: { data: Stan
           <tbody>
             {data.rows.map((r, i) => (
               <tr key={r.team.id} aria-label={`${r.position}. ${r.team.name}`}
-                className={`border-t ${r.qualified ? "border-l-4 border-l-green-600" : ""} ${i === data.qualifiers - 1 ? "border-b-2 border-b-foreground/30" : ""}`}>
+                className={`border-t ${r.qualified ? "border-l-4 border-l-success" : ""} ${i === data.qualifiers - 1 ? "border-b-2 border-b-foreground/30" : ""}`}>
                 <td className="px-2 py-2">{r.position}</td>
                 <td className="py-2">
                   <Link href={teamHref(r.team.id)} prefetch={prefetch} className="flex items-center gap-2 font-medium">

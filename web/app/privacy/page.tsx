@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Privacy", description: "What the FFC
 export default function Privacy() {
   return (
     <article className="prose-sm max-w-none space-y-4 text-sm">
-      <h1 className="text-xl font-semibold">Privacy</h1>
+      <h1 className="text-2xl font-bold text-primary">Privacy</h1>
       <p>FFCL is a small league run by volunteers. This page says plainly what the app keeps about you.</p>
       <section className="space-y-1"><h2 className="font-medium">What we keep</h2>
         <ul className="list-disc space-y-1 pl-5">

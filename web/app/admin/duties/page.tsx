@@ -42,7 +42,7 @@ function Duties() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Umpire duties</h1>
+      <h1 className="text-2xl font-bold text-primary">Umpire duties</h1>
       <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => { rememberSeason(e.target.value); setSid(e.target.value); }}>
         {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
@@ -50,7 +50,7 @@ function Duties() {
       <ul className="space-y-2">
         {rows.length === 0 && <li className="text-sm text-muted-foreground">No duties yet.</li>}
         {rows.map((d) => (
-          <li key={d.id} className="space-y-2 rounded-lg border p-3 text-sm">
+          <li key={d.id} className="space-y-2 card-elevated rounded-2xl border bg-card p-3 text-sm">
             <p><strong>Match {d.match.match_no}</strong> · {d.match.teams}<br />
               <span className="text-xs text-muted-foreground">{d.umpire.name}{d.team ? ` (for ${d.team.name})` : ""} · {d.status}{d.note ? ` · ${d.note}` : ""}</span></p>
             {(d.status === "assigned" || d.status === "missed") && (

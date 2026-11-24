@@ -44,14 +44,14 @@ function Table() {
   const champion = bracket?.champion ?? data?.season.champion ?? null;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Points table</h1>
+      <h1 className="text-2xl font-bold text-primary">Points table</h1>
       {seasons.length > 1 && (
         <select aria-label="Season" className={inputCls} value={seasonId ?? ""} onChange={(e) => { rememberSeason(e.target.value); setSeasonId(Number(e.target.value)); }}>
           {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       )}
       <ErrorText msg={err} />
-      {champion && <p role="status" className="rounded-lg bg-foreground px-4 py-3 text-center font-medium text-background">🏆 {champion.name} are champions</p>}
+      {champion && <p role="status" className="hero-gradient card-elevated rounded-2xl px-4 py-4 text-center text-lg font-bold">🏆 {champion.name} are champions</p>}
 
       {data && (
         <>

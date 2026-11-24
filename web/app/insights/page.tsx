@@ -21,7 +21,7 @@ function Insights() {
   }, [sid]);
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Season insights</h1>
+      <h1 className="text-2xl font-bold text-primary">Season insights</h1>
       <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => { rememberSeason(e.target.value); setSid(e.target.value); }}>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
       <ErrorText msg={err} />
       {d && <SeasonInsightsView data={d} teamHref={(id) => `/teams/${id}`} />}

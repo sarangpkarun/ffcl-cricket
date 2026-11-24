@@ -32,13 +32,13 @@ function Card({ u, canAdmin, isSuper, myId, seasons, onChange }: {
   const options = GRANTABLE.filter((r) => isSuper || !ADMIN_ROLES.includes(r));
 
   return (
-    <article className="space-y-2 rounded-lg border p-3" aria-label={`User ${u.name}`}>
+    <article className="space-y-2 card-elevated rounded-2xl border bg-card p-3" aria-label={`User ${u.name}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-medium">{u.name} <span className="text-xs text-muted-foreground">{u.player_code}</span></p>
           <p className="truncate text-xs text-muted-foreground">{u.email} · {u.phone ?? "no phone"} {u.phone && (u.phone_verified ? (u.phone_verified_by_admin ? "✅ verified by an admin" : "✅") : "⚠️ unverified")}</p>
         </div>
-        <span className={`rounded-full border px-2 py-0.5 text-xs ${u.status === "active" ? "" : "border-red-500 text-red-700"}`}>{u.status}</span>
+        <span className={`rounded-full border px-2 py-0.5 text-xs ${u.status === "active" ? "" : "border-destructive text-destructive"}`}>{u.status}</span>
       </div>
 
       <ul className="flex flex-wrap gap-1" aria-label="Roles">
@@ -111,7 +111,7 @@ function People() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">People</h1>
+      <h1 className="text-2xl font-bold text-primary">People</h1>
       <input aria-label="Search people" className={inputCls} placeholder="Name, email, phone or player ID" value={q}
         onChange={(e) => { setQ(e.target.value); setOffset(0); }} />
       <div className="flex gap-2">

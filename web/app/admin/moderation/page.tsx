@@ -42,15 +42,15 @@ function Moderation() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Chat moderation</h1>
+      <h1 className="text-2xl font-bold text-primary">Chat moderation</h1>
       <ErrorText msg={err} />
-      {ok && <p role="status" className="text-sm text-green-700">{ok}</p>}
+      {ok && <p role="status" className="text-sm text-success">{ok}</p>}
 
       <section className="space-y-3">
         <h2 className="font-medium">Reported messages ({reports.length})</h2>
         {reports.length === 0 && <p className="text-sm text-muted-foreground">Nothing waiting. 🎉</p>}
         {reports.map((r) => (
-          <article key={r.message.id} className="space-y-2 rounded-lg border p-3">
+          <article key={r.message.id} className="space-y-2 card-elevated rounded-2xl border bg-card p-3">
             <p className="text-xs text-muted-foreground">{r.message.room_title} · {r.message.sender?.name} · {new Date(r.message.created_at).toLocaleString()}</p>
             <p className="whitespace-pre-wrap break-words text-sm">{r.message.body ?? "(no text)"}{r.message.deleted && " — already removed"}</p>
             <ul className="text-xs text-muted-foreground">
@@ -74,7 +74,7 @@ function Moderation() {
         <h2 className="font-medium">Active mutes ({mutes.length})</h2>
         {mutes.length === 0 && <p className="text-sm text-muted-foreground">Nobody is muted.</p>}
         {mutes.map((m) => (
-          <div key={m.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+          <div key={m.id} className="flex items-center justify-between card-elevated rounded-2xl border bg-card p-3 text-sm">
             <span>{m.user.name}<br /><span className="text-xs text-muted-foreground">until {new Date(m.until).toLocaleString()} · {m.reason}</span></span>
             <button className={btnGhost} onClick={() => act(() => del(`/admin/mutes/${m.id}`), `Lifted mute for ${m.user.name}.`)}>Lift</button>
           </div>

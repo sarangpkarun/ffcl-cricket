@@ -31,7 +31,7 @@ async function Content({ params }: P) {
       <Section title="Squad">
         <ul className="grid gap-2 sm:grid-cols-2">
           {t.members.map((m) => (
-            <li key={m.player.player_code} className="rounded-lg border p-3 text-sm">
+            <li key={m.player.player_code} className="card-elevated rounded-2xl border bg-card p-3 text-sm">
               {m.player.id !== null ? <Link prefetch={false} className="font-medium underline" href={`/league/${slug}/players/${m.player.id}`}>{m.player.name}</Link> : <span className="font-medium">{m.player.name}</span>}
               {m.captain && " ©"}
             </li>

@@ -30,7 +30,7 @@ export function SearchPanel({ roomId, onClose }: { roomId: number; onClose: () =
         <button type="button" className="rounded border px-3 py-2 text-sm" aria-label="Close search" onClick={onClose}>✕</button>
       </form>
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Search all my chats</label>
-      {err && <p role="alert" className="text-xs text-red-600">{err}</p>}
+      {err && <p role="alert" className="text-xs text-destructive">{err}</p>}
       {hits && hits.length === 0 && <p className="text-xs text-muted-foreground">No messages found.</p>}
       {hits && hits.length > 0 && (
         <ul className="max-h-48 space-y-1 overflow-y-auto">

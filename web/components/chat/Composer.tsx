@@ -70,7 +70,7 @@ export function Composer({ roomId, moderator, replyTo, onCancelReply, onSend, on
           ))}
         </ul>
       )}
-      {err && <p role="alert" className="mb-1 text-xs text-red-600">{err}</p>}
+      {err && <p role="alert" className="mb-1 text-xs text-destructive">{err}</p>}
       {moderator && (
         <label className="mb-1 flex items-center gap-2 text-xs">
           <input type="checkbox" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} /> 📢 Send as pinned announcement
@@ -87,7 +87,7 @@ export function Composer({ roomId, moderator, replyTo, onCancelReply, onSend, on
           onChange={(e) => void onChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submit(); } }}
         />
-        <button className="h-11 rounded-md bg-foreground px-4 text-background disabled:opacity-40" disabled={!text.trim()}>{announce ? "Post" : "Send"}</button>
+        <button className="h-11 rounded-xl bg-primary px-4 text-primary-foreground disabled:opacity-40" disabled={!text.trim()}>{announce ? "Post" : "Send"}</button>
       </form>
     </div>
   );

@@ -19,7 +19,7 @@ export function TossAbsent({ live, onDone }: { live: Live; onDone: () => void })
   const wait = Math.max(0, Math.ceil((from - now) / 60_000));
 
   return (
-    <section className="space-y-2 rounded-lg border p-4" aria-label="Captain has not answered the toss">
+    <section className="space-y-2 card-elevated rounded-2xl border bg-card p-4" aria-label="Captain has not answered the toss">
       <h2 className="font-medium">A captain is not here?</h2>
       {wait > 0 ? (
         <p className="text-sm text-muted-foreground">The captains have {wait} more minute{wait === 1 ? "" : "s"} to answer the toss. After that you can award the match to the team that is here.</p>

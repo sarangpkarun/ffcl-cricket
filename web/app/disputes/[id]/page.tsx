@@ -66,7 +66,7 @@ function Detail() {
     <div className="space-y-4">
       <header>
         <p className="text-xs text-muted-foreground">{d.season.name}{d.match ? ` · Match ${d.match.match_no}: ${d.match.teams}` : ""}</p>
-        <h1 className="text-xl font-semibold">{KIND_LABEL[d.kind]}</h1>
+        <h1 className="text-2xl font-bold text-primary">{KIND_LABEL[d.kind]}</h1>
         <p className="text-sm"><b>{STATUS_LABEL[d.status]}</b>{d.assigned_to ? ` · looked at by ${d.assigned_to}` : ""}</p>
       </header>
       <ErrorText msg={err} />
@@ -77,7 +77,7 @@ function Detail() {
           {d.resolution && <p className="mt-1 text-xs text-muted-foreground">{ACTION_LABEL[d.resolution.action]}</p>}
         </section>
       )}
-      <section className="space-y-1 rounded-lg border p-3 text-sm">
+      <section className="space-y-1 card-elevated rounded-2xl border bg-card p-3 text-sm">
         <p className="text-xs text-muted-foreground">Raised by {d.raised_by.name} ({d.raised_by.as.replace("_", " ")}) · {when(d.created_at)}{d.against ? ` · about ${d.against}` : ""}</p>
         <p className="whitespace-pre-wrap">{d.body}</p>
         {d.match_result && <p className="text-xs text-muted-foreground">Result: {d.match_result}</p>}
@@ -89,7 +89,7 @@ function Detail() {
         {d.messages.length === 0 && <p className="text-sm text-muted-foreground">No messages yet.</p>}
         <ul className="space-y-2">
           {d.messages.map((m) => (
-            <li key={m.id} className={`rounded-lg border p-3 text-sm ${m.internal ? "border-dashed bg-amber-50" : ""}`}>
+            <li key={m.id} className={`card-elevated rounded-2xl border bg-card p-3 text-sm ${m.internal ? "border-dashed bg-warning/10" : ""}`}>
               <p className="text-xs text-muted-foreground">{m.author.name} · {when(m.created_at)}{m.internal && " · private note, only organisers see this"}</p>
               <p className="whitespace-pre-wrap">{m.body}</p>
             </li>

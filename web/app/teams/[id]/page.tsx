@@ -23,7 +23,7 @@ function StatsBlock({ id }: { id: string }) {
   if (!s || !s.table || s.table.played === 0) return null;
   const t = s.table;
   return (
-    <section aria-label="Team statistics" className="space-y-2 rounded-lg border p-3 text-sm">
+    <section aria-label="Team statistics" className="space-y-2 card-elevated rounded-2xl border bg-card p-3 text-sm">
       <h2 className="font-medium">Season statistics</h2>
       <p>#{t.position} · P{t.played} W{t.won} L{t.lost}{t.tied ? ` T${t.tied}` : ""} · {t.points} pts · NRR {t.nrr >= 0 ? "+" : ""}{t.nrr.toFixed(3)} · Win {s.win_pct}%</p>
       <ul className="space-y-1">
@@ -45,7 +45,7 @@ function Replacements({ id, team, onDone }: { id: string; team: TeamDetail; onDo
   useEffect(() => { void load(); }, [load]);
   const swappable = team.members.filter((m) => m.status === "approved" && m.user_id !== team.captain_id);
   return (
-    <section aria-label="Replace a player" className="space-y-2 rounded-lg border p-3">
+    <section aria-label="Replace a player" className="space-y-2 card-elevated rounded-2xl border bg-card p-3">
       <h2 className="font-medium">Replace a player</h2>
       <ErrorText msg={err} />
       <form className="space-y-2" onSubmit={async (e) => {
@@ -106,7 +106,7 @@ function TeamPage() {
 
       <ul className="space-y-2">
         {team.members.map((m) => (
-          <li key={m.user_id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+          <li key={m.user_id} className="flex items-center justify-between card-elevated rounded-2xl border bg-card p-3 text-sm">
             <span>
               <Link href={`/players/${m.user_id}`} className="underline">{m.name}</Link> <span className="text-muted-foreground">{m.player_code}</span>
               {team.captain_id === m.user_id && " ©"}

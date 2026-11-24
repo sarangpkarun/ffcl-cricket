@@ -25,7 +25,7 @@ function TeamLineup({ match, team, canEdit, onSaved }: { match: MatchDetail; tea
   const toggle = (uid: number) => setSel((s) => (s.includes(uid) ? s.filter((x) => x !== uid) : [...s, uid]));
 
   return (
-    <section className="space-y-2 rounded-lg border p-3">
+    <section className="space-y-2 card-elevated rounded-2xl border bg-card p-3">
       <h2 className="font-medium">{team.name} ({canEdit ? sel.length : current.length}/7)</h2>
       <ul className="space-y-1">
         {roster.map((m) => (
@@ -94,16 +94,16 @@ function MatchPage() {
   return (
     <div className="space-y-5">
       {tabs.length > 1 && (
-        <div role="tablist" className="flex rounded-lg border p-1">
+        <div role="tablist" className="flex rounded-2xl border bg-muted p-1">
           {tabs.map((t) => (
             <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
-              className={`flex-1 rounded-md py-2 text-sm ${tab === t.key ? "bg-foreground text-background" : ""}`}>{t.label}</button>
+              className={`flex-1 rounded-xl py-2 text-sm font-medium ${tab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.label}</button>
           ))}
         </div>
       )}
       {chatRoom && <ChatRoom key={chatRoom.room_id} roomId={chatRoom.room_id} />}
       {!chatRoom && <>
-      <p className={`text-xs ${connected ? "text-green-700" : "text-amber-700"}`} aria-live="polite">
+      <p className={`text-xs ${connected ? "text-success" : "text-warning"}`} aria-live="polite">
         {connected ? "● Live" : "○ Reconnecting…"}
       </p>
       <Scoreboard live={live} />

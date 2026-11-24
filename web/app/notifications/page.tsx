@@ -30,7 +30,7 @@ function PushSettings({ prefs, setPrefs }: { prefs: Pref[]; setPrefs: (f: (p: Pr
     <section aria-label="Push notifications" className="space-y-2">
       <h2 className="font-medium">Alerts on this device</h2>
       <ErrorText msg={err} />
-      {msg && <p role="status" className="text-sm text-green-700">{msg}</p>}
+      {msg && <p role="status" className="text-sm text-success">{msg}</p>}
       {state === "unsupported" && <p className="text-sm text-muted-foreground">This browser cannot show alerts. On an iPhone, add FFCL to your Home Screen first, then open it from there.</p>}
       {state === "denied" && <p className="text-sm text-muted-foreground">Alerts are blocked for this site. Allow notifications in your browser&apos;s site settings, then come back.</p>}
       {state === "off" && <button className={btnGhost} onClick={() => run(enablePush, "Alerts are on for this device.")}>Turn on alerts on this device</button>}
@@ -83,7 +83,7 @@ function Inbox() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Notifications</h1>
+        <h1 className="text-2xl font-bold text-primary">Notifications</h1>
         <button className={btnGhost} disabled={unread === 0} onClick={() => void markAll()}>Mark all read</button>
       </div>
       <ErrorText msg={err} />
@@ -93,7 +93,7 @@ function Inbox() {
           <li key={n.id}>
             <button
               type="button"
-              className={`w-full rounded-lg border p-3 text-left ${n.read ? "" : "border-blue-500 bg-blue-50"}`}
+              className={`w-full card-elevated rounded-2xl border bg-card p-3 text-left ${n.read ? "" : "border-blue-500 bg-blue-50"}`}
               onClick={() => { void markRead(n.id); if (n.data.link) router.push(n.data.link); }}
             >
               <p className="text-sm font-medium">{!n.read && <span aria-label="unread">● </span>}{n.title}</p>

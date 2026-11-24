@@ -15,7 +15,7 @@ function Complaint({ onDone }: { onDone: () => void }) {
   useEffect(() => { api<Season[]>("/seasons").then((s) => { setSeasons(s); setF((c) => ({ ...c, season: String((s.find((x) => x.status === "active") ?? s[0])?.id ?? "") })); }).catch(() => {}); }, []);
   useEffect(() => { if (f.season) api<Team[]>(`/seasons/${f.season}/teams`).then(setTeams).catch(() => setTeams([])); }, [f.season]);
   return (
-    <details className="rounded-lg border p-3">
+    <details className="card-elevated rounded-2xl border bg-card p-3">
       <summary className="cursor-pointer text-sm font-medium">Report a conduct problem</summary>
       <form className="mt-2 space-y-2" onSubmit={async (e) => {
         e.preventDefault();
@@ -33,7 +33,7 @@ function Complaint({ onDone }: { onDone: () => void }) {
         </select>
         <textarea aria-label="What happened" className={inputCls} rows={4} required minLength={10} maxLength={2000} placeholder="What happened? Include the match and who was involved." value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} />
         <ErrorText msg={err} />
-        {ok && <p role="status" className="text-sm text-green-700">Sent. The organisers will look at it.</p>}
+        {ok && <p role="status" className="text-sm text-success">Sent. The organisers will look at it.</p>}
         <button className={btnCls}>Send to the organisers</button>
       </form>
     </details>
@@ -48,14 +48,14 @@ function MyDisputes() {
   useEffect(() => { void load(); }, [load]);
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Disputes</h1>
+      <h1 className="text-2xl font-bold text-primary">Disputes</h1>
       <p className="text-sm text-muted-foreground">Disputes you raised, or that involve a team you captain. They are private: only the people involved and the organisers can see them.</p>
       <ErrorText msg={err} />
       {rows?.length === 0 && <p className="text-sm text-muted-foreground">Nothing here. To dispute a result, open the match after it finishes.</p>}
       <ul className="space-y-2">
         {rows?.map((d) => (
           <li key={d.id}>
-            <Link href={`/disputes/${d.id}`} className="block rounded-lg border p-3 text-sm">
+            <Link href={`/disputes/${d.id}`} className="block card-elevated rounded-2xl border bg-card p-3 text-sm">
               <p className="flex justify-between"><span className="font-medium">{KIND_LABEL[d.kind]}</span><span className="text-xs text-muted-foreground">{STATUS_LABEL[d.status]}</span></p>
               <p className="text-xs text-muted-foreground">{d.match ? `Match ${d.match.match_no}: ${d.match.teams}` : d.season.name} · {d.raised_by.name} · {when(d.updated_at)}</p>
               <p className="mt-1">{d.excerpt}</p>

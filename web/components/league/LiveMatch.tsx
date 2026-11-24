@@ -16,7 +16,7 @@ const STATE: Record<string, string> = {
 
 function Over({ over }: { over: NonNullable<Live["over"]> & { bowler?: string | null; batter?: string | null } }) {
   return (
-    <section aria-label="Current over" className="space-y-1 rounded-lg border p-3 text-sm">
+    <section aria-label="Current over" className="space-y-1 card-elevated rounded-2xl border bg-card p-3 text-sm">
       <p className="font-medium">Over {over.number} · {STATE[over.state] ?? over.state}</p>
       <p className="text-xs text-muted-foreground">{overLabel(over.over_type)}</p>
       {(over.bowler || over.batter) && <p>Bowler {over.bowler ?? "?"} {over.submitted.bowl ? "✅" : "⏳"} · Batter {over.batter ?? "?"} {over.submitted.bat ? "✅" : "⏳"}</p>}
@@ -32,7 +32,7 @@ export function LiveMatch({ matchId, initial, slug }: { matchId: number; initial
   const potm = live.match.potm;
   return (
     <div className="space-y-4">
-      {!finished && <p className={`text-xs ${connected ? "text-green-700" : "text-amber-700"}`} aria-live="polite">{connected ? "● Live" : "○ Updating every few seconds"}</p>}
+      {!finished && <p className={`text-xs ${connected ? "text-success" : "text-warning"}`} aria-live="polite">{connected ? "● Live" : "○ Updating every few seconds"}</p>}
       <Scoreboard live={live} />
       {live.innings.some((i) => i.status !== "pending") && <AnalyticsPanel matchId={matchId} seq={live.match.seq} publicSite />}
       {live.over && live.over.state !== "resolved" && !finished && <Over over={live.over} />}

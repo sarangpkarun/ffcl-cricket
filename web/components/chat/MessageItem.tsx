@@ -44,7 +44,7 @@ export function MessageItem({ m, myId, canEdit, moderator, reactionSet, open, on
   if (m.kind === "announcement") {
     return (
       <li className="my-1">
-        <div className="rounded-lg bg-foreground px-3 py-2 text-background">
+        <div className="rounded-2xl bg-primary px-3 py-2 text-primary-foreground">
           <p className="text-[11px] opacity-80">📢 Announcement · {m.sender?.name} · {time(m.created_at)}</p>
           <p className="whitespace-pre-wrap break-words text-sm">{m.deleted ? "Message removed" : m.body}</p>
           {moderator && !m.deleted && <button className="mt-1 text-[11px] underline" onClick={() => void guard(actions.onDelete)}>Delete</button>}

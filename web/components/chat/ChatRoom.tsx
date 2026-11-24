@@ -91,7 +91,7 @@ export function ChatRoom({ roomId }: { roomId: number }) {
         </div>
         <div className="flex items-center gap-3">
           <button type="button" aria-label="Search" className="text-lg" onClick={() => setSearching((v) => !v)}>🔍</button>
-          <span className={`text-xs ${r.connected ? "text-green-700" : "text-amber-700"}`} aria-live="polite">
+          <span className={`text-xs ${r.connected ? "text-success" : "text-warning"}`} aria-live="polite">
             {r.connected ? "● Live" : "○ Reconnecting…"}
           </span>
         </div>
@@ -136,7 +136,7 @@ export function ChatRoom({ roomId }: { roomId: number }) {
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {p.failed ? (
                   <>
-                    <span className="text-red-600">Not sent{p.error ? `: ${p.error}` : ""}</span>{" "}
+                    <span className="text-destructive">Not sent{p.error ? `: ${p.error}` : ""}</span>{" "}
                     <button className="underline" onClick={() => r.retrySend(p.client_id)}>Retry</button>{" "}
                     <button className="underline" onClick={() => r.discard(p.client_id)}>Discard</button>
                   </>
@@ -150,7 +150,7 @@ export function ChatRoom({ roomId }: { roomId: number }) {
       <p className="h-4 px-3 text-[11px] text-muted-foreground" aria-live="polite">
         {typingNames.length > 0 && `${typingNames.slice(0, 2).join(" and ")} ${typingNames.length > 2 ? "and others are" : typingNames.length === 2 ? "are" : "is"} typing…`}
       </p>
-      {r.error && <p role="alert" className="border-t px-3 py-1 text-xs text-red-600">{r.error}</p>}
+      {r.error && <p role="alert" className="border-t px-3 py-1 text-xs text-destructive">{r.error}</p>}
       {info && !info.can_post ? (
         <p role="status" className="border-t px-3 py-3 text-center text-sm text-muted-foreground">{info.blocked_reason ?? "You can read this chat but not post."}</p>
       ) : (

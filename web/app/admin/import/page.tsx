@@ -53,7 +53,7 @@ function Import() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Add players</h1>
+      <h1 className="text-2xl font-bold text-primary">Add players</h1>
       <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => { rememberSeason(e.target.value); setSid(e.target.value); }}>
         {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
@@ -73,9 +73,9 @@ function Import() {
           <p role="status" className="text-sm">{preview.ok} ready{preview.errors > 0 && `, ${preview.errors} with problems (they are skipped)`}.</p>
           <ul className="space-y-1 text-sm">
             {preview.rows.map((r) => (
-              <li key={r.line} className={`rounded border p-2 ${r.ok ? "" : "border-red-500"}`}>
+              <li key={r.line} className={`rounded border p-2 ${r.ok ? "" : "border-destructive"}`}>
                 <b>{r.name || "(no name)"}</b> · {r.phone} · {r.team} <span className="text-xs text-muted-foreground">line {r.line}</span>
-                {r.errors.map((m) => <p key={m} className="text-xs text-red-700">{m}</p>)}
+                {r.errors.map((m) => <p key={m} className="text-xs text-destructive">{m}</p>)}
               </li>
             ))}
           </ul>
@@ -97,7 +97,7 @@ function Import() {
           <ul className="space-y-2 text-sm">
             {issued.map((i) => <li key={i.id} className="rounded border p-2"><b>{i.name}</b> · {i.team}<br /><span className="break-all font-mono text-xs">{link(i.token)}</span></li>)}
           </ul>
-          {skipped.length > 0 && <p className="text-sm text-red-700">{skipped.length} row{skipped.length === 1 ? " was" : "s were"} skipped: {skipped.map((r) => `line ${r.line}`).join(", ")}.</p>}
+          {skipped.length > 0 && <p className="text-sm text-destructive">{skipped.length} row{skipped.length === 1 ? " was" : "s were"} skipped: {skipped.map((r) => `line ${r.line}`).join(", ")}.</p>}
         </section>
       )}
 

@@ -20,11 +20,11 @@ function History() {
   const lead = (label: string, l: Lead, unit: string) => l && <li>{label}: <Link className="underline" href={`/players/${l.player.id}`}>{l.player.name}</Link> {l.value} {unit}</li>;
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Season history</h1>
+      <h1 className="text-2xl font-bold text-primary">Season history</h1>
       <ErrorText msg={err} />
       {rows?.length === 0 && <p className="text-sm text-muted-foreground">No finished seasons yet.</p>}
       {rows?.map((s) => (
-        <section key={s.season.id} aria-label={s.season.name} className="space-y-2 rounded-lg border p-3 text-sm">
+        <section key={s.season.id} aria-label={s.season.name} className="space-y-2 card-elevated rounded-2xl border bg-card p-3 text-sm">
           <h2 className="font-medium">{s.season.name} <span className="text-xs text-muted-foreground">{s.teams} teams · {s.matches} matches</span></h2>
           {s.champion && <p className="font-medium">🏆 Champions: {s.champion.name}</p>}
           <ol className="divide-y rounded border">

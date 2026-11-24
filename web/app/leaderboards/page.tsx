@@ -37,7 +37,7 @@ function LeaderboardsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Leaderboards</h1>
+      <h1 className="text-2xl font-bold text-primary">Leaderboards</h1>
       <div className="flex gap-2">
         <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => { rememberSeason(e.target.value); setSid(e.target.value); }}>
           {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

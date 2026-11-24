@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Terms", description: "The rules for 
 export default function Terms() {
   return (
     <article className="max-w-none space-y-4 text-sm">
-      <h1 className="text-xl font-semibold">Terms of use</h1>
+      <h1 className="text-2xl font-bold text-primary">Terms of use</h1>
       <p>FFCL is a friendly league run by volunteers. By using the app you agree to the following.</p>
       <ul className="list-disc space-y-2 pl-5">
         <li><b>Play fair.</b> Submit your own digits, never share them before the reveal, and accept the umpire&apos;s decisions. Disputes go through the dispute screen, not the chat.</li>

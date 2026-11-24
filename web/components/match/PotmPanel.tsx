@@ -19,7 +19,7 @@ export function PotmPanel({ matchId, seq }: { matchId: number; seq: number }) {
   if (!d || !d.eligible) return <ErrorText msg={err} />;
 
   return (
-    <section aria-label="Player of the match" className="space-y-2 rounded-lg border p-3">
+    <section aria-label="Player of the match" className="space-y-2 card-elevated rounded-2xl border bg-card p-3">
       <h2 className="font-medium">⭐ Player of the match</h2>
       {d.award?.player
         ? <p className="text-sm"><Link className="font-medium underline" href={`/players/${d.award.player.id}`}>{d.award.player.name}</Link>{d.award.team && ` (${d.award.team})`}{describe(d.award) && ` · ${describe(d.award)}`}</p>

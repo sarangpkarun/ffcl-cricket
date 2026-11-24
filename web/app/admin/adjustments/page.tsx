@@ -40,12 +40,12 @@ function Adjustments() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Points adjustments</h1>
+      <h1 className="text-2xl font-bold text-primary">Points adjustments</h1>
       <select aria-label="Season" className={inputCls} value={sid} onChange={(e) => { rememberSeason(e.target.value); setSid(e.target.value); }}>
         {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
       <ErrorText msg={err} />
-      <form className="space-y-2 rounded-lg border p-3" onSubmit={async (e) => {
+      <form className="space-y-2 card-elevated rounded-2xl border bg-card p-3" onSubmit={async (e) => {
         e.preventDefault();
         setErr(null);
         try { await post(`/seasons/${sid}/adjustments`, { team_id: Number(form.team), points: Number(form.points), reason: form.reason, kind: "manual" }); setForm({ team: "", points: "", reason: "" }); await load(); }
@@ -62,7 +62,7 @@ function Adjustments() {
       <ul className="space-y-2">
         {rows.length === 0 && <li className="text-sm text-muted-foreground">No adjustments yet.</li>}
         {rows.map((a) => (
-          <li key={a.id} className="space-y-2 rounded-lg border p-3 text-sm">
+          <li key={a.id} className="space-y-2 card-elevated rounded-2xl border bg-card p-3 text-sm">
             <p className={a.voided ? "line-through opacity-60" : ""}><strong>{a.team.name}</strong> {a.points > 0 ? "+" : ""}{a.points} · {a.kind.replace("_", " ")}<br /><span className="text-xs text-muted-foreground">{a.reason} · {a.created_by}</span></p>
             {a.voided ? <p className="text-xs text-muted-foreground">Cancelled</p> : (
               <div className="flex gap-2">

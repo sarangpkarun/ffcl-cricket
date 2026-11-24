@@ -12,7 +12,7 @@ export function InstallApp() {
   useEffect(() => { setState({ installed: isStandalone(), kind: platform() }); }, []);
   if (!state) return null;
   return (
-    <section aria-label="Install the app" className="space-y-2 rounded-lg border p-4">
+    <section aria-label="Install the app" className="space-y-2 card-elevated rounded-2xl border bg-card p-4">
       <h2 className="font-medium">Install the app</h2>
       {state.installed ? <p className="text-sm">FFCL is installed on this device.</p>
         : event ? <button className={btnCls} onClick={async () => { await event.prompt(); await event.userChoice; }}>Install FFCL</button>

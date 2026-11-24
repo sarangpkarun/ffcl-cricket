@@ -11,13 +11,13 @@ import { useAuth } from "@/lib/auth";
 function PublicHeader() {
   const { me } = useAuth();
   return (
-    <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-12 max-w-3xl items-center justify-between gap-3 px-4">
-        <Link href="/" prefetch={false} className="flex items-center gap-2 font-semibold"><Logo size={28} />FFCL</Link>
+    <header className="hero-gradient sticky top-0 z-10 shadow-md">
+      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-4">
+        <Link href="/" prefetch={false} className="flex items-center gap-2 font-bold tracking-wide"><Logo size={30} />FFCL</Link>
         <nav aria-label="Site" className="flex items-center gap-4 text-sm">
           <Link href="/league" prefetch={false}>Seasons</Link>
           <Link href="/league/history" prefetch={false}>History</Link>
-          {me ? <Link href="/fixtures" className="rounded-md border px-3 py-1">Open the app</Link> : <Link href="/login" prefetch={false} className="rounded-md border px-3 py-1">Sign in</Link>}
+          {me ? <Link href="/fixtures" className="rounded-full bg-white px-3 py-1 font-medium text-primary">Open the app</Link> : <Link href="/login" prefetch={false} className="rounded-full bg-white px-3 py-1 font-medium text-primary">Sign in</Link>}
         </nav>
       </div>
     </header>

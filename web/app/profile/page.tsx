@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { btnCls, btnGhost, ErrorText, Field, RequireAuth } from "@/components/ui-bits";
 import { api, del, patch, post } from "@/lib/api";
@@ -24,11 +25,11 @@ function PhoneChange({ onChanged, me }: { onChanged: () => void; me: { phone_cod
   const open = req && (req.status === "pending" || req.status === "approved");
 
   return (
-    <section aria-label="Change phone number" className="space-y-3 rounded-lg border p-4">
+    <section aria-label="Change phone number" className="space-y-3 card-elevated rounded-2xl border bg-card p-4">
       <h2 className="font-medium">Change phone number</h2>
       <ErrorText msg={err} />
-      {req?.status === "rejected" && <p className="text-sm text-red-700">Your last request was rejected: {req.decision_note}</p>}
-      {req?.status === "completed" && <p className="text-sm text-green-700">Your number was changed.</p>}
+      {req?.status === "rejected" && <p className="text-sm text-destructive">Your last request was rejected: {req.decision_note}</p>}
+      {req?.status === "completed" && <p className="text-sm text-success">Your number was changed.</p>}
       {open && req.status === "pending" && <p className="text-sm">Waiting for an admin to approve the change to {req.new_phone}.</p>}
       {open && req.status === "approved" && me.phone_codes && (
         <div className="space-y-2">
@@ -72,17 +73,17 @@ function Profile() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">My profile</h1>
-      <section className="rounded-lg border p-4 text-sm space-y-1">
+      <h1 className="text-2xl font-bold text-primary">My profile</h1>
+      <section className="card-elevated rounded-2xl border bg-card p-4 text-sm space-y-1">
         <p className="text-base font-medium">{me.name}</p>
         <p>Player ID: <b>{me.player_code}</b></p>
         <p>{me.email}</p>
-        <p>Mobile: {me.phone ?? "—"} {me.phone_verified ? "✅ verified" : "⚠️ not verified"}</p>
+        <p>Mobile: {me.phone ?? "—"} {me.phone_verified ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 size={14} aria-hidden />verified</span> : <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle size={14} aria-hidden />not verified</span>}</p>
         <p>Roles: {me.roles.join(", ")}</p>
       </section>
 
       {me.phone && !me.phone_verified && (
-        <section className="space-y-3 rounded-lg border p-4">
+        <section className="space-y-3 card-elevated rounded-2xl border bg-card p-4">
           <p className="text-sm">You must verify your registered number to play.</p>
           {!me.phone_codes ? (
             <p className="text-sm" role="status">Ask an organiser to verify your number. They will check it with you, and you will get a notification when it is done.</p>
@@ -101,7 +102,7 @@ function Profile() {
         </section>
       )}
       <ErrorText msg={err} />
-      <section aria-label="Privacy" className="space-y-2 rounded-lg border p-4">
+      <section aria-label="Privacy" className="space-y-2 card-elevated rounded-2xl border bg-card p-4">
         <h2 className="font-medium">Public site</h2>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={me.show_publicly} onChange={(e) => run(async () => { await patch("/me", { show_publicly: e.target.checked }); await reload(); })} />

@@ -31,8 +31,8 @@ function Queue() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Disputes</h1>
-      {sum && <p className="text-sm text-muted-foreground">{sum.open} waiting · {sum.in_review} being looked at · {sum.mine} yours{sum.stale > 0 && <b className="text-red-700"> · {sum.stale} waiting over 3 days</b>}</p>}
+      <h1 className="text-2xl font-bold text-primary">Disputes</h1>
+      {sum && <p className="text-sm text-muted-foreground">{sum.open} waiting · {sum.in_review} being looked at · {sum.mine} yours{sum.stale > 0 && <b className="text-destructive"> · {sum.stale} waiting over 3 days</b>}</p>}
       <p className="text-xs text-muted-foreground">Disputes that involve your own team are not shown here: someone else decides those.</p>
       <div className="grid grid-cols-3 gap-2">
         <select aria-label="Status" className={inputCls} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
@@ -50,7 +50,7 @@ function Queue() {
       <ul className="space-y-2">
         {rows?.map((d) => (
           <li key={d.id}>
-            <Link href={`/disputes/${d.id}`} className={`block rounded-lg border p-3 text-sm ${stale(d) ? "border-red-600" : ""}`}>
+            <Link href={`/disputes/${d.id}`} className={`block card-elevated rounded-2xl border bg-card p-3 text-sm ${stale(d) ? "border-destructive" : ""}`}>
               <p className="flex justify-between"><span className="font-medium">{KIND_LABEL[d.kind]}</span><span className="text-xs text-muted-foreground">{STATUS_LABEL[d.status]}{d.assigned_to ? ` · ${d.assigned_to}` : ""}</span></p>
               <p className="text-xs text-muted-foreground">{d.match ? `Match ${d.match.match_no}: ${d.match.teams}` : d.season.name} · {d.raised_by.name} · {when(d.created_at)}</p>
               <p className="mt-1">{d.excerpt}</p>

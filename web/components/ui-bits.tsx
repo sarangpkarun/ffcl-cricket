@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 
-export const inputCls = "w-full rounded-md border bg-background px-3 py-3 text-base";
-export const btnCls = "w-full rounded-md bg-foreground py-3 text-background disabled:opacity-40";
-export const btnGhost = "rounded-md border px-3 py-2 text-sm";
+export const inputCls = "w-full rounded-xl border bg-card px-3 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-ring/30";
+export const btnCls = "w-full rounded-xl bg-primary py-3 font-medium text-primary-foreground shadow-sm transition active:scale-[0.98] disabled:opacity-40";
+export const btnGhost = "rounded-xl border bg-card px-3 py-2 text-sm transition active:scale-[0.98]";
 
 export function Field({ label, ...p }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -20,7 +20,7 @@ export function Field({ label, ...p }: { label: string } & React.InputHTMLAttrib
 
 export function ErrorText({ msg }: { msg: string | null }) {
   return msg ? (
-    <p role="alert" className="text-sm text-red-600">
+    <p role="alert" className="text-sm text-destructive">
       {msg}
     </p>
   ) : null;

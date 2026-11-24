@@ -27,7 +27,7 @@ function Clone({ d, onDone }: { d: Dash; onDone: (id: number) => void }) {
   const [rosters, setRosters] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   return (
-    <details className="rounded-lg border p-3">
+    <details className="card-elevated rounded-2xl border bg-card p-3">
       <summary className="cursor-pointer text-sm font-medium">Start the next season from this one</summary>
       <form className="mt-2 space-y-2" onSubmit={async (e) => {
         e.preventDefault();
@@ -61,7 +61,7 @@ function Dashboard() {
     <div className="space-y-5">
       <header>
         <p className="text-xs text-muted-foreground">{d.season.status}{d.season.is_public ? "" : " · hidden from the public"}{d.rules ? ` · rules ${d.rules.name} v${d.rules.version}` : ""}</p>
-        <h1 className="text-xl font-semibold">{d.season.name}</h1>
+        <h1 className="text-2xl font-bold text-primary">{d.season.name}</h1>
         {d.season.champion && <p className="text-sm">🏆 {d.season.champion}</p>}
       </header>
       <section aria-label="At a glance" className="grid grid-cols-3 gap-2">
